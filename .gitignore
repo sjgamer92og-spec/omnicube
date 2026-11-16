@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+*.launch
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local run data / logs
+run/
+logs/
+*.log
+
+# Never commit secrets or local toolchains
+.env
+.jdk/

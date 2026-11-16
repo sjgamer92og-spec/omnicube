@@ -1,0 +1,24 @@
+{
+	"schemaVersion": 1,
+	"version": "${version}",
+	"description": "An all-in-one client-side toolkit: HUD, QoL, chat, waypoints, macros and an adaptive performance module. Built for Minecraft 1.21.11.",
+	"authors": [
+		"sjgamer92og-spec"
+	],
+	"contact": {
+	},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+		],
+		"client": [
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": ">=0.141.0"
+	}
+}
