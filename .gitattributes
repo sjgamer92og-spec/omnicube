@@ -1,0 +1,8 @@
+# Keep release artifacts and the icon byte-exact on every platform.
+*.jar binary
+*.png binary
+
+# Shell scripts and Gradle files use LF.
+gradlew text eol=lf
+*.gradle text eol=lf
+*.properties text eol=lf
