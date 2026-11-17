@@ -1,18 +1,25 @@
 {
 	"schemaVersion": 1,
+	"id": "omnicube",
 	"version": "${version}",
+	"name": "OmniCube",
 	"description": "An all-in-one client-side toolkit: HUD, QoL, chat, waypoints, macros and an adaptive performance module. Built for Minecraft 1.21.11.",
 	"authors": [
 		"sjgamer92og-spec"
 	],
 	"contact": {
+		"homepage": "https://github.com/sjgamer92og-spec/omnicube",
+		"sources": "https://github.com/sjgamer92og-spec/omnicube"
 	},
 	"license": "MIT",
+	"icon": "assets/omnicube/icon.png",
 	"environment": "client",
 	"entrypoints": {
 		"main": [
+			"dev.omnicube.OmniCubeMod"
 		],
 		"client": [
+			"dev.omnicube.client.OmniCubeClient"
 		]
 	},
 	"depends": {

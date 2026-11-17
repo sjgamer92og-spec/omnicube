@@ -1,5 +1,6 @@
 # Credits
 
+## OmniCube
 
 Original code, artwork and design: **sjgamer92og-spec**, licensed under the MIT License.
 
@@ -7,6 +8,7 @@ No third-party mod source code or assets are included in this repository. The fe
 
 ## Inspiration
 
+- **Cactus Mod** by Dwarslooper and contributors — inspiration for the "all-in-one client toolkit" feature set. Cactus Mod is **All Rights Reserved**, so no Cactus code, assets, names or config files were copied. OmniCube is an independent implementation.
 - The Minecraft modding community for documenting Fabric APIs and client-side patterns.
 
 ## Runtime and build dependencies (not bundled beyond normal mod requirements)
@@ -27,10 +29,14 @@ The Minecraft/Fabric dependencies are not redistributed in source form. The buil
 
 The module boundary is intentionally prepared:
 
+- `dev.omnicube.client.optimization.OptimizationBackend` — backend contract
+- `dev.omnicube.client.optimization.BuiltinOptimizationBackend` — current, vanilla-options-only backend
 
 
 2. Keep its original license header and add the license text here.
 3. Implement `OptimizationBackend` and register it during client init.
+4. Add the author's copyright line and any required notice to this file and to the jar's `LICENSE_omnicube`-adjacent notices.
 
 ## License headers
 
+All OmniCube source files are original work released under the repository's MIT License. No copied files were used, so no third-party source headers are present. If code is adapted from another project in the future, the original header must be preserved and the project listed above with its license.

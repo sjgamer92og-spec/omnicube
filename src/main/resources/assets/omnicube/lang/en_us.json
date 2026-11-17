@@ -1,0 +1,11 @@
+{
+	"key.categories.omnicube.main": "OmniCube",
+	"key.categories.omnicube.omnicube": "OmniCube",
+	"key.omnicube.open_menu": "Open OmniCube menu",
+	"key.omnicube.zoom": "Zoom (hold)",
+	"key.omnicube.hud_editor": "Open HUD editor",
+	"key.omnicube.add_waypoint": "Add waypoint here",
+	"key.omnicube.copy_coordinates": "Copy coordinates",
+	"modmenu.nameTranslation.omnicube": "OmniCube",
+	"modmenu.summaryTranslation.omnicube": "All-in-one client toolkit: HUD, QoL, waypoints, macros and adaptive performance."
+}
