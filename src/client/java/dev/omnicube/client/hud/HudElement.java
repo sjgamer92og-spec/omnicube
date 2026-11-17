@@ -19,13 +19,14 @@ public abstract class HudElement implements Feature {
 	private final String id;
 	private final String name;
 	private final String description;
-	private final double defaultX;
-	private final double defaultY;
+	private double defaultX;
+	private double defaultY;
 	private double x;
 	private double y;
+	private boolean defaultEnabled = true;
 	private boolean enabled;
-	private int measuredWidth = 160;
-	private int measuredHeight = 40;
+	private int measuredWidth = -1;
+	private int measuredHeight = -1;
 
 	protected HudElement(String id, String name, String description, double defaultX, double defaultY) {
 		this.id = id;
@@ -86,12 +87,39 @@ public abstract class HudElement implements Feature {
 		this.y = defaultY;
 	}
 
+	public void setDefaultPosition(double x, double y) {
+		this.defaultX = HudPos.clamp(x);
+		this.defaultY = HudPos.clamp(y);
+	}
+
+	public boolean defaultEnabled() {
+		return defaultEnabled;
+	}
+
+	public void setDefaultEnabled(boolean enabled) {
+		this.defaultEnabled = enabled;
+		this.enabled = enabled;
+	}
+
 	public int screenX(Minecraft client, int guiWidth) {
+		ensureMeasured(client);
 		return (int) Math.round(x * Math.max(0, guiWidth - measuredWidth));
 	}
 
 	public int screenY(Minecraft client, int guiHeight) {
+		ensureMeasured(client);
 		return (int) Math.round(y * Math.max(0, guiHeight - measuredHeight));
+	}
+
+	/** Measures once before the first frame so elements do not jump after being drawn. */
+	public void measure(Minecraft client) {
+		setMeasuredSize(width(client), height(client));
+	}
+
+	private void ensureMeasured(Minecraft client) {
+		if (measuredWidth <= 0 || measuredHeight <= 0) {
+			measure(client);
+		}
 	}
 
 	protected final void setMeasuredSize(int width, int height) {
@@ -116,14 +144,17 @@ public abstract class HudElement implements Feature {
 
 	public void render(GuiGraphics graphics, Minecraft client, int screenX, int screenY) {
 		List<String> lines = lines(client);
-		if (lines.isEmpty()) {
+		if (lines == null || lines.isEmpty()) {
 			return;
 		}
 
+		int available = Math.max(32, graphics.guiWidth() - Math.max(0, screenX) - PADDING * 2);
 		int width = 0;
-		for (String line : lines) {
+		for (String raw : lines) {
+			String line = raw == null ? "" : raw;
 			width = Math.max(width, client.font.width(line));
 		}
+		width = Math.min(width, available);
 		int height = lines.size() * LINE_HEIGHT;
 		setMeasuredSize(width + PADDING * 2, height + PADDING * 2);
 
@@ -133,8 +164,12 @@ public abstract class HudElement implements Feature {
 
 		int y = screenY;
 		for (int i = 0; i < lines.size(); i++) {
+			String line = lines.get(i) == null ? "" : lines.get(i);
+			if (client.font.width(line) > width) {
+				line = client.font.plainSubstrByWidth(line, Math.max(1, width - client.font.width("..."))) + "...";
+			}
 			int color = i == 0 ? accentColor() : 0xFFE6E6E6;
-			graphics.drawString(client.font, lines.get(i), screenX, y, color, true);
+			graphics.drawString(client.font, line, screenX, y, color, true);
 			y += LINE_HEIGHT;
 		}
 	}
@@ -142,12 +177,13 @@ public abstract class HudElement implements Feature {
 	public int width(Minecraft client) {
 		int width = 0;
 		for (String line : lines(client)) {
-			width = Math.max(width, client.font.width(line));
+			width = Math.max(width, client.font.width(line == null ? "" : line));
 		}
 		return width + PADDING * 2;
 	}
 
 	public int height(Minecraft client) {
-		return Math.max(1, lines(client).size()) * LINE_HEIGHT + PADDING * 2;
+		List<String> lines = lines(client);
+		return Math.max(1, lines == null ? 0 : lines.size()) * LINE_HEIGHT + PADDING * 2;
 	}
 }

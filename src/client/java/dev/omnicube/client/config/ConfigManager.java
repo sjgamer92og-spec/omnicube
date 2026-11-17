@@ -42,24 +42,32 @@ public final class ConfigManager {
 
 		if (Files.exists(path)) {
 			OmniCubeConfig config = read(path);
-			if (config == null) {
-				backupCorruptFile(path);
-				return new OmniCubeConfig();
+			if (config != null) {
+				return config;
 			}
-			return config;
+			// A damaged or empty omnicube.json is backed up, then a still-valid
+			// legacy config is used instead of silently dropping the user's setup.
+			backupCorruptFile(path);
+			OmniCubeConfig recovered = loadLegacy(path);
+			return recovered != null ? recovered : new OmniCubeConfig();
 		}
 
-		Path legacy = path.resolveSibling(LEGACY_CONFIG_FILE);
-		if (Files.exists(legacy)) {
-			OmniCubeConfig migrated = read(legacy);
-			if (migrated != null) {
-				migrateLegacy(legacy, path, migrated);
-				return migrated;
-			}
+		OmniCubeConfig migrated = loadLegacy(path);
+		return migrated != null ? migrated : new OmniCubeConfig();
+	}
+
+	private static OmniCubeConfig loadLegacy(Path target) {
+		Path legacy = target.resolveSibling(LEGACY_CONFIG_FILE);
+		if (!Files.exists(legacy)) {
+			return null;
+		}
+		OmniCubeConfig migrated = read(legacy);
+		if (migrated == null) {
 			backupCorruptFile(legacy);
+			return null;
 		}
-
-		return new OmniCubeConfig();
+		migrateLegacy(legacy, target, migrated);
+		return migrated;
 	}
 
 	private static OmniCubeConfig read(Path path) {
@@ -89,8 +97,8 @@ public final class ConfigManager {
 		try {
 			write(target, config);
 			OmniCubeMod.LOGGER.info("[OmniCube] Migrated the legacy config to {}.", target.getFileName());
-		} catch (IOException exception) {
-			OmniCubeMod.LOGGER.warn("[OmniCube] Could not write the migrated config to {}; defaults will be used for this session.",
+		} catch (Exception exception) {
+			OmniCubeMod.LOGGER.warn("[OmniCube] Could not write the migrated config to {}; it will be retried on the next launch.",
 					target.getFileName(), exception);
 		}
 	}
@@ -107,14 +115,14 @@ public final class ConfigManager {
 
 	public static void save(OmniCubeConfig config, ModuleManager modules, HudManager hud) {
 		Path path = configPath();
-		config.sanitize();
-		modules.write(config.modules);
-		hud.write(config.hud);
-
 		try {
+			config.sanitize();
+			modules.write(config.modules);
+			hud.write(config.hud);
 			write(path, config);
-		} catch (IOException exception) {
-			OmniCubeMod.LOGGER.error("[OmniCube] Could not save the config to {}.", path, exception);
+		} catch (Throwable throwable) {
+			// A failed save must never break a screen, a tick or the shutdown hook.
+			OmniCubeMod.LOGGER.error("[OmniCube] Could not save the config to {}.", path, throwable);
 		}
 	}
 

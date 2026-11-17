@@ -24,6 +24,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class HudElements {
 	private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -52,6 +53,39 @@ public final class HudElements {
 		hud.register(new DurabilityHud());
 		hud.register(new KeystrokesHud());
 		hud.register(new CpsHud());
+
+		// A small, spaced default layout keeps the HUD readable on a 320x240 GUI
+		// and avoids stacking every optional element on top of the FPS counter.
+		layout(hud, "hud_fps", 0.006D, 0.006D, true);
+		layout(hud, "hud_coords", 0.006D, 0.135D, true);
+		layout(hud, "hud_biome", 0.006D, 0.27D, true);
+		layout(hud, "hud_facing", 0.006D, 0.405D, true);
+		layout(hud, "hud_ping", 0.006D, 0.54D, true);
+		layout(hud, "hud_server", 0.006D, 0.675D, true);
+		layout(hud, "hud_memory", 0.79D, 0.006D, true);
+		layout(hud, "hud_waypoint", 0.79D, 0.135D, true);
+		layout(hud, "hud_tnt", 0.79D, 0.27D, true);
+		layout(hud, "hud_speed", 0.006D, 0.81D, false);
+		layout(hud, "hud_entities", 0.006D, 0.88D, false);
+		layout(hud, "hud_session", 0.79D, 0.405D, false);
+		layout(hud, "hud_clock", 0.79D, 0.54D, false);
+		layout(hud, "hud_timer", 0.79D, 0.675D, false);
+		layout(hud, "hud_experience", 0.79D, 0.81D, false);
+		layout(hud, "hud_potions", 0.79D, 0.88D, false);
+		layout(hud, "hud_armor", 0.79D, 0.95D, false);
+		layout(hud, "hud_durability", 0.95D, 0.95D, false);
+		layout(hud, "hud_keystrokes", 0.95D, 0.81D, false);
+		layout(hud, "hud_cps", 0.95D, 0.675D, false);
+	}
+
+	private static void layout(HudManager hud, String id, double x, double y, boolean enabled) {
+		HudElement element = hud.byId(id);
+		if (element == null) {
+			return;
+		}
+		element.setDefaultPosition(x, y);
+		element.setDefaultEnabled(enabled);
+		element.resetPosition();
 	}
 
 	private static List<String> fallback() {
@@ -189,19 +223,27 @@ public final class HudElements {
 			super("hud_entities", "Nearby Entities", "Rendered entities within 48 blocks.", 0.006D, 0.345D);
 		}
 
+		private long lastScan;
+		private int cachedCount;
+
 		@Override
 		public List<String> lines(Minecraft client) {
 			LocalPlayer player = client.player;
 			if (player == null || client.level == null) {
 				return fallback();
 			}
-			int count = 0;
-			for (var entity : client.level.entitiesForRendering()) {
-				if (entity.distanceToSqr(player.getX(), player.getY(), player.getZ()) <= 48.0D * 48.0D) {
-					count++;
+			long now = System.currentTimeMillis();
+			if (now - lastScan >= 500L) {
+				lastScan = now;
+				int count = 0;
+				for (var entity : client.level.entitiesForRendering()) {
+					if (entity.distanceToSqr(player.getX(), player.getY(), player.getZ()) <= 48.0D * 48.0D) {
+						count++;
+					}
 				}
+				cachedCount = count;
 			}
-			return List.of("Entities  " + count);
+			return List.of("Entities  " + cachedCount);
 		}
 	}
 
@@ -244,6 +286,7 @@ public final class HudElements {
 	private static final class SessionHud extends HudElement {
 		private static long joinedAt;
 		private static boolean inWorld;
+		private static UUID lastPlayerId;
 
 		private SessionHud() {
 			super("hud_session", "Session", "How long you have been in this world.", 0.79D, 0.055D);
@@ -253,10 +296,12 @@ public final class HudElements {
 		public List<String> lines(Minecraft client) {
 			if (client.player == null) {
 				inWorld = false;
+				lastPlayerId = null;
 				return List.of("Session  -");
 			}
-			if (!inWorld) {
+			if (!inWorld || lastPlayerId == null || !lastPlayerId.equals(client.player.getUUID())) {
 				inWorld = true;
+				lastPlayerId = client.player.getUUID();
 				joinedAt = System.currentTimeMillis();
 			}
 			return List.of("Session  " + OmniCubeText.formatDuration(System.currentTimeMillis() - joinedAt));
@@ -300,22 +345,30 @@ public final class HudElements {
 			super("hud_tnt", "TNT Fuse", "Countdown of the nearest primed TNT.", 0.79D, 0.215D);
 		}
 
+		private long lastScan;
+		private PrimedTnt nearest;
+		private double nearestDistance = Double.MAX_VALUE;
+
 		@Override
 		public List<String> lines(Minecraft client) {
 			LocalPlayer player = client.player;
 			if (player == null || client.level == null) {
 				return fallback();
 			}
-			PrimedTnt nearest = null;
-			double best = Double.MAX_VALUE;
-			for (var entity : client.level.entitiesForRendering()) {
-				if (!(entity instanceof PrimedTnt tnt)) {
-					continue;
-				}
-				double distance = tnt.distanceToSqr(player.getX(), player.getY(), player.getZ());
-				if (distance < best) {
-					best = distance;
-					nearest = tnt;
+			long now = System.currentTimeMillis();
+			if (nearest == null || nearest.isRemoved() || now - lastScan >= 250L) {
+				lastScan = now;
+				nearest = null;
+				nearestDistance = Double.MAX_VALUE;
+				for (var entity : client.level.entitiesForRendering()) {
+					if (!(entity instanceof PrimedTnt tnt)) {
+						continue;
+					}
+					double distance = tnt.distanceToSqr(player.getX(), player.getY(), player.getZ());
+					if (distance < nearestDistance) {
+						nearestDistance = distance;
+						nearest = tnt;
+					}
 				}
 			}
 			if (nearest == null) {
@@ -323,7 +376,7 @@ public final class HudElements {
 			}
 			double seconds = Math.max(0.0D, nearest.getFuse()) / 20.0D;
 			return List.of(String.format(Locale.ROOT, "TNT  %.1fs", seconds),
-					String.format(Locale.ROOT, "%.0f blocks away", Math.sqrt(best)));
+					String.format(Locale.ROOT, "%.0f blocks away", Math.sqrt(nearestDistance)));
 		}
 	}
 
@@ -533,7 +586,7 @@ public final class HudElements {
 				box(graphics, client, screenX + key + gap, screenY + key + gap, key, "S", s);
 				box(graphics, client, screenX + (key + gap) * 2, screenY + key + gap, key, "D", d);
 				box(graphics, client, screenX, screenY + (key + gap) * 2, (key + gap) * 2 - gap, "SPACE", space);
-				box(graphics, client, screenX + (key + gap) * 2, screenY + (key + gap) * 2, key, "SHIFT", shift);
+				box(graphics, client, screenX + (key + gap) * 2, screenY + (key + gap) * 2, key, "SH", shift);
 			} catch (Throwable ignored) {
 				// If input polling is unavailable, the keystrokes element simply stays blank.
 			}

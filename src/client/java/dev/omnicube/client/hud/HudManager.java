@@ -47,6 +47,7 @@ public final class HudManager {
 				continue;
 			}
 			try {
+				element.measure(client);
 				int x = element.screenX(client, guiWidth);
 				int y = element.screenY(client, guiHeight);
 				element.render(graphics, client, x, y);
@@ -72,6 +73,9 @@ public final class HudManager {
 
 	public void read(JsonObject root) {
 		for (HudElement element : elements) {
+			// Start from defaults so a missing or removed entry cannot leave stale layout state.
+			element.resetPosition();
+			element.setEnabled(element.defaultEnabled());
 			JsonElement raw = root.get(element.id());
 			if (raw == null || !raw.isJsonObject()) {
 				continue;

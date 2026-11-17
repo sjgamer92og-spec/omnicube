@@ -34,8 +34,8 @@ public final class OmniCubeScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int listX = SIDEBAR_WIDTH + 10;
-		int listW = Math.max(120, this.width - listX - 10);
+		int listX = listX();
+		int listW = listWidth();
 
 		search = new EditBox(this.font, listX, 24, listW, 18, Component.literal("Search"));
 		search.setValue(query);
@@ -47,25 +47,32 @@ public final class OmniCubeScreen extends Screen {
 		addRenderableWidget(search);
 
 		int footerY = this.height - 27;
-		addRenderableWidget(Button.builder(Component.literal("HUD Editor"), button -> {
+		int doneWidth = Math.min(60, Math.max(30, this.width / 5));
+		int doneX = this.width - doneWidth - 10;
+		int buttonWidth = Math.max(24, Math.min(96, (doneX - 18) / 3));
+		int buttonX = 10;
+
+		addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new HudEditorScreen(this));
 			}
-		}).bounds(10, footerY, 96, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		buttonX += buttonWidth + 4;
 
 		addRenderableWidget(Button.builder(Component.literal("Macros"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new MacroScreen(this));
 			}
-		}).bounds(112, footerY, 80, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		buttonX += buttonWidth + 4;
 
 		addRenderableWidget(Button.builder(Component.literal("Reload"), button -> {
 			OmniCubeClient.reloadConfig();
 			refresh();
-		}).bounds(listX, footerY, 64, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build());
 
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-				.bounds(this.width - 74, footerY, 64, 20).build());
+				.bounds(doneX, footerY, doneWidth, 20).build());
 
 		refresh();
 	}
@@ -88,6 +95,18 @@ public final class OmniCubeScreen extends Screen {
 		}
 		visible = filtered;
 		scroll = clampScroll(scroll);
+	}
+
+	private int sidebarWidth() {
+		return Math.max(84, Math.min(SIDEBAR_WIDTH, this.width / 4));
+	}
+
+	private int listX() {
+		return sidebarWidth() + 10;
+	}
+
+	private int listWidth() {
+		return Math.max(40, this.width - listX() - 10);
 	}
 
 	private int listTop() {
@@ -113,9 +132,10 @@ public final class OmniCubeScreen extends Screen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		int accent = OmniCubeClient.config().accentArgb();
-		graphics.fill(0, 0, SIDEBAR_WIDTH, this.height, 0xCC0B0F0B);
-		graphics.fill(SIDEBAR_WIDTH, 0, SIDEBAR_WIDTH + 1, this.height, 0x557ED957);
-		graphics.fill(SIDEBAR_WIDTH + 1, HEADER_HEIGHT - 1, this.width, HEADER_HEIGHT, 0x33FFFFFF);
+		int sidebar = sidebarWidth();
+		graphics.fill(0, 0, sidebar, this.height, 0xCC0B0F0B);
+		graphics.fill(sidebar, 0, sidebar + 1, this.height, 0x557ED957);
+		graphics.fill(sidebar + 1, HEADER_HEIGHT - 1, this.width, HEADER_HEIGHT, 0x33FFFFFF);
 
 		graphics.drawString(this.font, "OMNICUBE", 12, 13, accent, true);
 		graphics.drawString(this.font, "Minecraft 1.21.11", 12, 24, 0xFF8A8A8A, false);
@@ -129,10 +149,10 @@ public final class OmniCubeScreen extends Screen {
 		}
 
 		String count = visible.size() + " features";
-		graphics.drawString(this.font, this.title.copy().append(Component.literal("  •  " + count)), SIDEBAR_WIDTH + 10, 8, 0xFFEDEDED, true);
+		graphics.drawString(this.font, this.title.copy().append(Component.literal("  •  " + count)), listX(), 8, 0xFFEDEDED, true);
 
-		int listX = SIDEBAR_WIDTH + 10;
-		int listW = Math.max(120, this.width - listX - 10);
+		int listX = listX();
+		int listW = listWidth();
 		int top = listTop();
 		int bottom = listBottom();
 		graphics.fill(listX - 2, top - 2, listX + listW + 2, bottom + 2, 0x88101010);
@@ -165,10 +185,11 @@ public final class OmniCubeScreen extends Screen {
 
 	private void drawCategory(GuiGraphics graphics, String label, ModuleCategory value, int y, int mouseX, int mouseY) {
 		boolean selected = category == value;
-		boolean hovered = mouseX >= 4 && mouseX <= SIDEBAR_WIDTH - 4 && mouseY >= y && mouseY <= y + 17;
+		int sidebar = sidebarWidth();
+		boolean hovered = mouseX >= 4 && mouseX <= sidebar - 4 && mouseY >= y && mouseY <= y + 17;
 		int background = selected ? 0x447ED957 : hovered ? 0x22FFFFFF : 0x00000000;
 		if (background != 0) {
-			graphics.fill(4, y, SIDEBAR_WIDTH - 4, y + 17, background);
+			graphics.fill(4, y, sidebar - 4, y + 17, background);
 		}
 		if (selected) {
 			graphics.fill(4, y, 6, y + 17, OmniCubeClient.config().accentArgb());
@@ -184,25 +205,27 @@ public final class OmniCubeScreen extends Screen {
 			graphics.fill(x, y, x + 3, y + ROW_HEIGHT, accent);
 		}
 
-		String name = feature.name();
+		int textWidth = Math.max(20, width - (feature.settings().isEmpty() || width < 180 ? 48 : 128));
+		String name = this.font.plainSubstrByWidth(feature.name(), textWidth);
 		graphics.drawString(this.font, name, x + 9, y + 4, enabled ? 0xFFF2F2F2 : 0xFF9A9A9A, false);
-		graphics.drawString(this.font, feature.category().label() + " • " + feature.id(), x + 9, y + 14, 0xFF777777, false);
+		String subtitle = this.font.plainSubstrByWidth(feature.category().label() + " • " + feature.id(), textWidth);
+		graphics.drawString(this.font, subtitle, x + 9, y + 14, 0xFF777777, false);
 
-		int stateX = x + width - 54;
+		int stateX = x + width - 28;
 		graphics.drawString(this.font, enabled ? "ON" : "OFF", stateX, y + 8, enabled ? accent : 0xFF777777, true);
 
-		if (!feature.settings().isEmpty()) {
+		if (!feature.settings().isEmpty() && width >= 180) {
 			graphics.drawString(this.font, "SETTINGS", x + width - 118, y + 8, hovered ? 0xFFFFFFFF : 0xFF8A8A8A, false);
 		}
 	}
 
 	private boolean settingsHit(double mouseX, double mouseY, int x, int y, int width) {
-		return mouseX >= x + width - 120 && mouseX <= x + width - 54 && mouseY >= y && mouseY < y + ROW_HEIGHT;
+		return width >= 180 && mouseX >= x + width - 120 && mouseX <= x + width - 54 && mouseY >= y && mouseY < y + ROW_HEIGHT;
 	}
 
 	private Feature featureAt(double mouseX, double mouseY) {
-		int listX = SIDEBAR_WIDTH + 10;
-		int listW = Math.max(120, this.width - listX - 10);
+		int listX = listX();
+		int listW = listWidth();
 		if (mouseX < listX || mouseX >= listX + listW || mouseY < listTop() || mouseY >= listBottom()) {
 			return null;
 		}
@@ -229,7 +252,7 @@ public final class OmniCubeScreen extends Screen {
 		double mouseX = event.x();
 		double mouseY = event.y();
 
-		if (mouseX >= 4 && mouseX <= SIDEBAR_WIDTH - 4) {
+		if (mouseX >= 4 && mouseX <= sidebarWidth() - 4) {
 			if (mouseY >= 54 && mouseY < 71) {
 				category = null;
 				refresh();
@@ -252,8 +275,8 @@ public final class OmniCubeScreen extends Screen {
 			return false;
 		}
 
-		int listX = SIDEBAR_WIDTH + 10;
-		int listW = Math.max(120, this.width - listX - 10);
+		int listX = listX();
+		int listW = listWidth();
 		int index = visible.indexOf(feature);
 		int rowY = listTop() - scroll + index * (ROW_HEIGHT + ROW_GAP);
 
@@ -274,7 +297,7 @@ public final class OmniCubeScreen extends Screen {
 		if (super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)) {
 			return true;
 		}
-		if (mouseX >= SIDEBAR_WIDTH && mouseY >= listTop() && mouseY <= listBottom()) {
+		if (mouseX >= listX() && mouseY >= listTop() && mouseY <= listBottom()) {
 			scroll = clampScroll(scroll - (int) Math.round(verticalAmount * 18.0D));
 			return true;
 		}

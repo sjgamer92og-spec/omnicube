@@ -168,6 +168,10 @@ public final class OmniCubeCommands {
 
 	private static int showNbt(FabricClientCommandSource source) {
 		LocalPlayer player = source.getPlayer();
+		if (player == null) {
+			source.sendError(Component.literal("This command needs a player."));
+			return 0;
+		}
 		ItemStack stack = player.getMainHandItem();
 		if (stack.isEmpty()) {
 			source.sendError(Component.literal("Hold an item first."));
@@ -203,6 +207,10 @@ public final class OmniCubeCommands {
 			return 0;
 		}
 		LocalPlayer player = source.getPlayer();
+		if (player == null) {
+			source.sendError(Component.literal("This command needs a player."));
+			return 0;
+		}
 		Waypoint waypoint = module.add(name, player.getX(), player.getY(), player.getZ());
 		source.sendFeedback(Component.literal("[OmniCube] Saved " + module.describe(waypoint)).withStyle(ChatFormatting.GREEN));
 		return 1;
@@ -245,6 +253,9 @@ public final class OmniCubeCommands {
 		source.sendFeedback(Component.literal("[OmniCube] " + waypoints.size() + " waypoint(s):").withStyle(ChatFormatting.GREEN));
 		for (int i = 0; i < Math.min(20, waypoints.size()); i++) {
 			Waypoint waypoint = waypoints.get(i);
+			if (waypoint == null) {
+				continue;
+			}
 			String text = module == null ? waypoint.name : module.describe(waypoint);
 			source.sendFeedback(Component.literal("  " + text + " [" + waypoint.dimension + "]").withStyle(ChatFormatting.GRAY));
 		}

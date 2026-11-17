@@ -14,14 +14,19 @@ import net.minecraft.core.component.DataComponents;
 import java.util.List;
 
 public final class TooltipModule extends Module {
-	private final Setting.Bool containerPreview = add(new Setting.Bool("container_preview", "Container preview", true));
+	private final Setting.Bool containerPreview = add(new Setting.Bool("container_preview", "Container text preview", false));
+	private final Setting.Bool visualPreview = add(new Setting.Bool("visual_container_preview", "Container item grid", true));
 	private final Setting.Bool itemId = add(new Setting.Bool("item_id", "Show item ID", false));
 	private final Setting.Bool durability = add(new Setting.Bool("durability", "Durability numbers", true));
 	private final Setting.Bool foodValues = add(new Setting.Bool("food_values", "Food values", true));
 	private final Setting.Num maxLines = add(new Setting.Num("max_container_lines", "Container lines", 8.0D, 1.0D, 27.0D, 1.0D));
 
 	public TooltipModule() {
-		super("tooltips", "Better Tooltips", "Adds shulker/container contents, durability, food values and optional item IDs to tooltips.", ModuleCategory.MISC, true);
+		super("tooltips", "Better Tooltips", "Adds shulker/container previews, durability, food values and optional item IDs to tooltips.", ModuleCategory.MISC, true);
+	}
+
+	public boolean visualPreviewEnabled() {
+		return isEnabled() && visualPreview.get();
 	}
 
 	public void appendTooltip(ItemStack stack, List<Component> lines) {

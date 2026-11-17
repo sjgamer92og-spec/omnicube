@@ -1,6 +1,5 @@
 package dev.omnicube.client.module.impl;
 
-import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -24,7 +23,7 @@ public final class CoordinatesModule extends Module {
 			return;
 		}
 		String text = String.format(Locale.ROOT, "%.2f %.2f %.2f", player.getX(), player.getY(), player.getZ());
-		if (includeDimension.get() || OmniCubeClient.config().copyCoordsIncludesDimension) {
+		if (includeDimension.get()) {
 			try {
 				String dimension = client.level == null ? "" : client.level.dimension().identifier().getPath();
 				if (!dimension.isEmpty()) {

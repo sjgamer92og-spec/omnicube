@@ -7,6 +7,7 @@ import dev.omnicube.client.config.ConfigManager;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.gui.OmniCubeScreen;
 import dev.omnicube.client.gui.HudEditorScreen;
+import dev.omnicube.client.gui.InventoryToolsScreen;
 import dev.omnicube.client.hud.HudElement;
 import dev.omnicube.client.hud.HudElements;
 import dev.omnicube.client.hud.HudManager;
@@ -14,16 +15,25 @@ import dev.omnicube.client.keybind.OmniCubeKeybinds;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleManager;
 import dev.omnicube.client.module.impl.ChatLogModule;
+import dev.omnicube.client.module.impl.ChatModule;
 import dev.omnicube.client.module.impl.CoordinatesModule;
+import dev.omnicube.client.module.impl.FreeLookModule;
 import dev.omnicube.client.module.impl.FullbrightModule;
+import dev.omnicube.client.module.impl.InventoryToolsModule;
 import dev.omnicube.client.module.impl.HudModule;
 import dev.omnicube.client.module.impl.MacroModule;
+import dev.omnicube.client.module.impl.MarkerModule;
+import dev.omnicube.client.module.impl.NameTagModule;
 import dev.omnicube.client.module.impl.PerformanceModule;
 import dev.omnicube.client.module.impl.TooltipModule;
 import dev.omnicube.client.module.impl.WaypointModule;
 import dev.omnicube.client.module.impl.ZoomModule;
+import dev.omnicube.client.tooltip.ClientContainerTooltip;
+import dev.omnicube.client.tooltip.ContainerTooltip;
 import dev.omnicube.client.util.OmniCubeText;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.rendering.v1.TooltipComponentCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
@@ -33,6 +43,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
@@ -51,6 +62,10 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static CoordinatesModule coordinatesModule;
 	private static TooltipModule tooltipModule;
 	private static ChatLogModule chatLogModule;
+	private static ChatModule chatModule;
+	private static FreeLookModule freeLookModule;
+	private static NameTagModule nameTagModule;
+	private static MarkerModule markerModule;
 	private static PerformanceModule performanceModule;
 
 	@Override
@@ -61,6 +76,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 		fullbrightModule = register(new FullbrightModule());
 		zoomModule = register(new ZoomModule());
+		freeLookModule = register(new FreeLookModule());
 		register(new dev.omnicube.client.module.impl.AutoSprintModule());
 		register(new dev.omnicube.client.module.impl.FlySpeedModule());
 		register(new dev.omnicube.client.module.impl.ChatLogModule());
@@ -71,6 +87,10 @@ public final class OmniCubeClient implements ClientModInitializer {
 		performanceModule = register(new PerformanceModule());
 		hudModule = register(new HudModule());
 		chatLogModule = (ChatLogModule) modules.byId("chat_log");
+		chatModule = register(new ChatModule());
+		nameTagModule = register(new NameTagModule());
+		markerModule = register(new MarkerModule());
+		register(new InventoryToolsModule());
 
 		HudElements.register(hud);
 		modules.read(config.modules);
@@ -81,6 +101,14 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 		OmniCubeKeybinds.init();
 		OmniCubeCommands.register();
+
+		TooltipComponentCallback.EVENT.register(data -> {
+			try {
+				return data instanceof ContainerTooltip tooltip ? new ClientContainerTooltip(tooltip.stacks()) : null;
+			} catch (Throwable ignored) {
+				return null;
+			}
+		});
 
 		// Draw before chat, the scoreboard and titles so those vanilla layers stay readable.
 		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR,
@@ -96,6 +124,44 @@ public final class OmniCubeClient implements ClientModInitializer {
 			}
 		});
 
+		ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, timestamp) -> {
+			try {
+				if (chatModule == null) {
+					return true;
+				}
+				chatModule.remember(message);
+				if (!chatModule.timestampEnabled()) {
+					return true;
+				}
+				if (chatLogModule != null) {
+					chatLogModule.recordChat(message.getString());
+				}
+				Minecraft client = Minecraft.getInstance();
+				Component decorated = chatModule.decorate(message);
+				client.execute(() -> {
+					try {
+						client.gui.getChat().addMessage(decorated);
+					} catch (Throwable ignored) {
+						// The message is simply dropped if the chat HUD is unavailable.
+					}
+				});
+				return false;
+			} catch (Throwable throwable) {
+				return true;
+			}
+		});
+
+		ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
+			try {
+				if (!overlay && chatModule != null && chatModule.timestampEnabled()) {
+					return chatModule.decorate(message);
+				}
+			} catch (Throwable ignored) {
+				// Keep the original game message.
+			}
+			return message;
+		});
+
 		ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) -> {
 			if (chatLogModule != null) {
 				chatLogModule.recordChat(message.getString());
@@ -105,6 +171,23 @@ public final class OmniCubeClient implements ClientModInitializer {
 		ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
 			if (chatLogModule != null && !overlay) {
 				chatLogModule.recordSystem(message.getString());
+			}
+		});
+
+		WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+			try {
+				if (nameTagModule != null) {
+					nameTagModule.render(context);
+				}
+			} catch (Throwable ignored) {
+				// One world feature must not break another or the vanilla pass.
+			}
+			try {
+				if (markerModule != null) {
+					markerModule.render(context);
+				}
+			} catch (Throwable ignored) {
+				// Same isolation for markers.
 			}
 		});
 
@@ -151,6 +234,20 @@ public final class OmniCubeClient implements ClientModInitializer {
 				while (OmniCubeKeybinds.copyCoordinates.consumeClick()) {
 					if (coordinatesModule != null && coordinatesModule.isEnabled()) {
 						coordinatesModule.copyPosition();
+					}
+				}
+			}
+			if (OmniCubeKeybinds.copyChat != null) {
+				while (OmniCubeKeybinds.copyChat.consumeClick()) {
+					if (chatModule != null) {
+						chatModule.copyLast();
+					}
+				}
+			}
+			if (OmniCubeKeybinds.inventoryTools != null) {
+				while (OmniCubeKeybinds.inventoryTools.consumeClick()) {
+					if (modules.byId("inventory_tools") != null && modules.byId("inventory_tools").isEnabled()) {
+						client.setScreen(new InventoryToolsScreen(null));
 					}
 				}
 			}
@@ -229,6 +326,22 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static PerformanceModule performance() {
 		return performanceModule;
+	}
+
+	public static FreeLookModule freeLook() {
+		return freeLookModule;
+	}
+
+	public static TooltipModule tooltips() {
+		return tooltipModule;
+	}
+
+	public static ChatModule chat() {
+		return chatModule;
+	}
+
+	public static NameTagModule nameTags() {
+		return nameTagModule;
 	}
 
 	public static List<Feature> features() {

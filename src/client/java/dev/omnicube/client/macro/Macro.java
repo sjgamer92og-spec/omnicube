@@ -17,11 +17,27 @@ public final class Macro {
 		this.key = key;
 	}
 
+	public void sanitize() {
+		if (name == null || name.isBlank()) {
+			name = "Macro";
+		}
+		if (command == null) {
+			command = "";
+		}
+		if (key < 0) {
+			key = GLFW.GLFW_KEY_UNKNOWN;
+		}
+	}
+
 	public String keyName() {
 		if (key <= 0) {
 			return "unbound";
 		}
-		String name = GLFW.glfwGetKeyName(key, 0);
-		return name == null ? "key " + key : name.toUpperCase(java.util.Locale.ROOT);
+		try {
+			String name = GLFW.glfwGetKeyName(key, 0);
+			return name == null ? "key " + key : name.toUpperCase(java.util.Locale.ROOT);
+		} catch (Throwable ignored) {
+			return "key " + key;
+		}
 	}
 }

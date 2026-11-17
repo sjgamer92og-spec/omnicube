@@ -14,6 +14,9 @@ public final class OmniCubeKeybinds {
 	public static KeyMapping hudEditor;
 	public static KeyMapping addWaypoint;
 	public static KeyMapping copyCoordinates;
+	public static KeyMapping freeLook;
+	public static KeyMapping copyChat;
+	public static KeyMapping inventoryTools;
 
 	private OmniCubeKeybinds() {
 	}
@@ -28,10 +31,13 @@ public final class OmniCubeKeybinds {
 		}
 
 		openMenu = register("key.omnicube.open_menu", GLFW.GLFW_KEY_RIGHT_SHIFT);
-		zoom = register("key.omnicube.zoom", GLFW.GLFW_KEY_C);
+		zoom = register("key.omnicube.zoom", GLFW.GLFW_KEY_V);
 		hudEditor = register("key.omnicube.hud_editor", GLFW.GLFW_KEY_H);
 		addWaypoint = register("key.omnicube.add_waypoint", GLFW.GLFW_KEY_B);
 		copyCoordinates = register("key.omnicube.copy_coordinates", GLFW.GLFW_KEY_F6);
+		freeLook = register("key.omnicube.free_look", GLFW.GLFW_KEY_RIGHT_ALT);
+		copyChat = register("key.omnicube.copy_chat", GLFW.GLFW_KEY_F7);
+		inventoryTools = register("key.omnicube.inventory_tools", GLFW.GLFW_KEY_F8);
 	}
 
 	private static KeyMapping register(String translationKey, int defaultKey) {

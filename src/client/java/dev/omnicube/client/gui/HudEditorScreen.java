@@ -26,17 +26,20 @@ public final class HudEditorScreen extends Screen {
 
 	@Override
 	protected void init() {
+		int doneWidth = Math.min(80, Math.max(50, this.width / 4));
+		int doneX = this.width - doneWidth - 12;
+		int resetWidth = Math.min(100, Math.max(50, doneX - 20));
 		addRenderableWidget(Button.builder(Component.literal("Reset layout"), button -> {
 			HudManager hud = OmniCubeClient.hud();
 			for (HudElement element : hud.elements()) {
 				element.resetPosition();
-				element.setEnabled(true);
+				element.setEnabled(element.defaultEnabled());
 			}
 			OmniCubeClient.saveConfig();
-		}).bounds(12, this.height - 28, 100, 20).build());
+		}).bounds(12, this.height - 28, resetWidth, 20).build());
 
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-				.bounds(this.width - 92, this.height - 28, 80, 20).build());
+				.bounds(doneX, this.height - 28, doneWidth, 20).build());
 	}
 
 	@Override
@@ -58,38 +61,36 @@ public final class HudEditorScreen extends Screen {
 		boxes.clear();
 		HudManager hud = OmniCubeClient.hud();
 		for (HudElement element : hud.elements()) {
-			int width = Math.max(12, element.width(this.minecraft));
-			int height = Math.max(12, element.height(this.minecraft));
-			int x = Math.max(0, Math.min(this.width - width, element.screenX(this.minecraft, this.width)));
-			int y = Math.max(0, Math.min(this.height - height, element.screenY(this.minecraft, this.height)));
+			try {
+				element.measure(this.minecraft);
+				int width = Math.max(12, Math.min(this.width, element.width(this.minecraft)));
+				int height = Math.max(12, Math.min(this.height, element.height(this.minecraft)));
+				int x = Math.max(0, Math.min(this.width - width, element.screenX(this.minecraft, this.width)));
+				int y = Math.max(0, Math.min(this.height - height, element.screenY(this.minecraft, this.height)));
 
-			if (element.isEnabled()) {
-				try {
+				if (element.isEnabled()) {
 					element.render(graphics, this.minecraft, x, y);
-				} catch (Throwable ignored) {
-					// An element that needs a world simply draws nothing here.
-				}
-			} else {
-				try {
+				} else {
 					List<String> lines = element.lines(this.minecraft);
 					int lineY = y;
 					for (String line : lines) {
-						graphics.drawString(this.font, line, x, lineY, 0x66FFFFFF, false);
+						graphics.drawString(this.font, line == null ? "" : line, x, lineY, 0x66FFFFFF, false);
 						lineY += 10;
 					}
-				} catch (Throwable ignored) {
-					// Show only the border for elements that cannot compute without a world.
 				}
+
+				int border = element.isEnabled() ? accent : 0xFF777777;
+				graphics.fill(x - 2, y - 2, x + width + 2, y - 1, border);
+				graphics.fill(x - 2, y + height + 1, x + width + 2, y + height + 2, border);
+				graphics.fill(x - 2, y - 1, x - 1, y + height + 1, border);
+				graphics.fill(x + width + 1, y - 1, x + width + 2, y + height + 1, border);
+
+				graphics.drawString(this.font, element.name(), x, Math.max(34, y - 10), element.isEnabled() ? 0xFFDDDDDD : 0xFF888888, false);
+				boxes.add(new ElementBox(element, x, y, width, height));
+			} catch (Throwable throwable) {
+				// One malformed element must not make the editor unusable.
+				boxes.add(new ElementBox(element, 0, 0, 12, 12));
 			}
-
-			int border = element.isEnabled() ? accent : 0xFF777777;
-			graphics.fill(x - 2, y - 2, x + width + 2, y - 1, border);
-			graphics.fill(x - 2, y + height + 1, x + width + 2, y + height + 2, border);
-			graphics.fill(x - 2, y - 1, x - 1, y + height + 1, border);
-			graphics.fill(x + width + 1, y - 1, x + width + 2, y + height + 1, border);
-
-			graphics.drawString(this.font, element.name(), x, Math.max(34, y - 10), element.isEnabled() ? 0xFFDDDDDD : 0xFF888888, false);
-			boxes.add(new ElementBox(element, x, y, width, height));
 		}
 
 		graphics.drawString(this.font, "Performance backend: " + dev.omnicube.client.module.impl.PerformanceModule.backendName(),

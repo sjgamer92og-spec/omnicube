@@ -82,7 +82,12 @@ public final class ModuleManager {
 					for (Setting<?> setting : module.settings()) {
 						JsonElement raw = object.get(setting.id());
 						if (raw != null) {
-							setting.fromJson(raw);
+							try {
+								setting.fromJson(raw);
+							} catch (RuntimeException ignored) {
+								// Keep this setting's default instead of failing the whole config load.
+								setting.reset();
+							}
 						}
 					}
 				}

@@ -37,7 +37,7 @@ public final class MacroScreen extends Screen {
 
 		MacroModule module = OmniCubeClient.macros();
 		List<Macro> macros = OmniCubeClient.config().macros;
-		int width = Math.min(520, Math.max(200, this.width - 24));
+		int width = Math.min(520, Math.max(120, this.width - 24));
 		int x = (this.width - width) / 2;
 		int formTop = this.height - 82;
 		maxRows = Math.max(1, Math.min(MAX_ROWS, (formTop - 54) / 24));
@@ -64,22 +64,26 @@ public final class MacroScreen extends Screen {
 		}
 
 		int formY = this.height - 82;
-		nameField = new EditBox(this.font, x, formY, 120, 18, Component.literal("Name"));
+		int nameWidth = Math.max(60, Math.min(120, width / 2 - 4));
+		nameField = new EditBox(this.font, x, formY, nameWidth, 18, Component.literal("Name"));
 		nameField.setValue("");
 		addRenderableWidget(nameField);
 
-		commandField = new EditBox(this.font, x + 126, formY, Math.max(60, width - 132), 18, Component.literal("/command"));
+		commandField = new EditBox(this.font, x + nameWidth + 6, formY, Math.max(40, width - nameWidth - 6),
+				18, Component.literal("/command"));
 		commandField.setValue("");
 		addRenderableWidget(commandField);
 
 		int secondRow = this.height - 58;
+		int bindWidth = Math.max(60, Math.min(130, width / 2));
 		bindButton = Button.builder(Component.literal("Bind: none"), button -> {
 			awaitingBind = true;
 			button.setMessage(Component.literal("Press a key..."));
-		}).bounds(x, secondRow, 130, 18).build();
+		}).bounds(x, secondRow, bindWidth, 18).build();
 		addRenderableWidget(bindButton);
 
-		addButton = Button.builder(Component.literal("Add"), button -> addMacro()).bounds(x + 136, secondRow, 60, 18).build();
+		addButton = Button.builder(Component.literal("Add"), button -> addMacro())
+				.bounds(x + bindWidth + 6, secondRow, Math.max(40, width - bindWidth - 6), 18).build();
 		addRenderableWidget(addButton);
 
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
@@ -114,7 +118,7 @@ public final class MacroScreen extends Screen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		int accent = OmniCubeClient.config().accentArgb();
-		int width = Math.min(520, Math.max(200, this.width - 24));
+		int width = Math.min(520, Math.max(120, this.width - 24));
 		int x = (this.width - width) / 2;
 
 		graphics.drawCenteredString(this.font, this.title.copy().append(Component.literal("  (" + OmniCubeClient.config().macros.size() + ")")),

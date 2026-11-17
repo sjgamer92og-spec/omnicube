@@ -3,7 +3,7 @@
 	"id": "omnicube",
 	"version": "${version}",
 	"name": "OmniCube",
-	"description": "An all-in-one client-side toolkit: HUD, QoL, chat, waypoints, macros and an adaptive performance module. Built for Minecraft 1.21.11.",
+	"description": "An all-in-one client-side toolkit: HUD, free look, container previews, name tags, chat tools, world markers, inventory tools, waypoints, macros and an adaptive performance module. Built for Minecraft 1.21.11.",
 	"authors": [
 		"sjgamer92og-spec"
 	],
@@ -22,6 +22,12 @@
 			"dev.omnicube.client.OmniCubeClient"
 		]
 	},
+	"mixins": [
+		{
+			"config": "omnicube.mixins.json",
+			"environment": "client"
+		}
+	],
 	"depends": {
 		"fabricloader": ">=0.18.0",
 		"minecraft": "~1.21.11",

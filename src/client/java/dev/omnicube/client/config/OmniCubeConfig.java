@@ -52,6 +52,12 @@ public final class OmniCubeConfig {
 		}
 		macros.removeIf(java.util.Objects::isNull);
 		waypoints.removeIf(java.util.Objects::isNull);
+		for (Macro macro : macros) {
+			macro.sanitize();
+		}
+		for (Waypoint waypoint : waypoints) {
+			waypoint.sanitize();
+		}
 	}
 
 	/** Parses "#RRGGBB" into an opaque ARGB int, falling back to OmniCube green. */

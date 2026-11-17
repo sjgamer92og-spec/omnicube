@@ -4,7 +4,9 @@
 
 Original code, artwork and design: **sjgamer92og-spec**, licensed under the MIT License.
 
-No third-party mod source code or assets are included in this repository. The features were written from scratch against the public Minecraft and Fabric API documentation.
+No third-party mod source code or assets are included in this repository. v0.2.0's free look, container tooltip grid, name tags, chat timestamps, world markers and inventory tools were written from scratch against the public Minecraft/Fabric API and the decompiled mapping signatures. No code was copied from Cactus Mod or any other All Rights Reserved project.
+
+The four client mixins in `dev.omnicube.client.mixin` are small `@Inject` hooks written for OmniCube itself; they do not copy or redistribute another mod's mixin code. They exist only where the Fabric API has no public client hook (mouse/camera decoupling, tooltip image data, and vanilla name-tag suppression).
 
 ## Inspiration
 
@@ -22,6 +24,7 @@ No third-party mod source code or assets are included in this repository. The fe
 | [LWJGL](https://www.lwjgl.org/) | BSD-3-Clause | Input and window access (provided by Minecraft) |
 | [Gson](https://github.com/google/gson) | Apache-2.0 | Config JSON (provided by Minecraft) |
 | [SLF4J](https://www.slf4j.org/) | MIT | Logging (provided by Minecraft) |
+| [Mixin](https://github.com/SpongePowered/Mixin) | MIT | Optional client hooks (provided by Fabric Loader) |
 
 The Minecraft/Fabric dependencies are not redistributed in source form. The built jar expects the standard Fabric runtime and Fabric API.
 

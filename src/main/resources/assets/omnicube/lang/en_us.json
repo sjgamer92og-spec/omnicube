@@ -6,6 +6,9 @@
 	"key.omnicube.hud_editor": "Open HUD editor",
 	"key.omnicube.add_waypoint": "Add waypoint here",
 	"key.omnicube.copy_coordinates": "Copy coordinates",
+	"key.omnicube.free_look": "Free look (hold)",
+	"key.omnicube.copy_chat": "Copy last chat message",
+	"key.omnicube.inventory_tools": "Open inventory tools",
 	"modmenu.nameTranslation.omnicube": "OmniCube",
 	"modmenu.summaryTranslation.omnicube": "All-in-one client toolkit: HUD, QoL, waypoints, macros and adaptive performance."
 }
