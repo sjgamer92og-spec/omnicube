@@ -26,9 +26,9 @@ public final class HudEditorScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int doneWidth = Math.min(80, Math.max(50, this.width / 4));
-		int doneX = this.width - doneWidth - 12;
-		int resetWidth = Math.min(100, Math.max(50, doneX - 20));
+		int doneWidth = Math.min(80, Math.max(40, this.width / 5));
+		int doneX = this.width - doneWidth - 8;
+		int resetWidth = Math.max(20, Math.min(100, doneX - 16));
 		addRenderableWidget(Button.builder(Component.literal("Reset layout"), button -> {
 			HudManager hud = OmniCubeClient.hud();
 			for (HudElement element : hud.elements()) {
@@ -110,6 +110,10 @@ public final class HudEditorScreen extends Screen {
 				continue;
 			}
 			if (event.button() == 1) {
+				if (!box.element().isAvailable()) {
+					dev.omnicube.client.util.OmniCubeText.sendError(box.element().unavailableReason());
+					return true;
+				}
 				box.element().setEnabled(!box.element().isEnabled());
 				OmniCubeClient.saveConfig();
 				return true;

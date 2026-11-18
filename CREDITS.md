@@ -4,14 +4,32 @@
 
 Original code, artwork and design: **sjgamer92og-spec**, licensed under the MIT License.
 
-No third-party mod source code or assets are included in this repository. v0.2.0's free look, container tooltip grid, name tags, chat timestamps, world markers and inventory tools were written from scratch against the public Minecraft/Fabric API and the decompiled mapping signatures. No code was copied from Cactus Mod or any other All Rights Reserved project.
+No third-party mod source code or assets are included in this repository. v0.2.0's free look, container tooltip grid, name tags, chat timestamps/search/collapse, streamer redaction, crosshair renderer, auto-reconnect, conservative entity culling, world markers, compatibility registry and inventory tools were written from scratch against the public Minecraft/Fabric API and the decompiled mapping signatures. No code was copied from Cactus Mod or any other All Rights Reserved project.
 
-The four client mixins in `dev.omnicube.client.mixin` are small `@Inject` hooks written for OmniCube itself; they do not copy or redistribute another mod's mixin code. They exist only where the Fabric API has no public client hook (mouse/camera decoupling, tooltip image data, and vanilla name-tag suppression).
+The optional client mixins in `dev.omnicube.client.mixin` are small `@Inject` hooks written for OmniCube itself; they do not copy or redistribute another mod's mixin code. They exist only where the Fabric API has no public client hook (mouse/camera decoupling, tooltip image data, vanilla name-tag suppression, replacing the newest chat line, and a conservative entity-visibility check). The chat refresh method is reached through a generated Mixin accessor; no vanilla method is overwritten.
+
+The new v0.2.0 logo is original geometric artwork generated for this repository; it does not use third-party logo assets or fonts.
 
 ## Inspiration
 
 - **Cactus Mod** by Dwarslooper and contributors — inspiration for the "all-in-one client toolkit" feature set. Cactus Mod is **All Rights Reserved**, so no Cactus code, assets, names or config files were copied. OmniCube is an independent implementation.
 - The Minecraft modding community for documenting Fabric APIs and client-side patterns.
+
+## Compatibility research
+
+The compatibility table is a list of loader IDs and display names. No third-party mod code, metadata or assets are bundled. The following projects were checked as overlapping providers during development:
+
+- HUD: Essential, Raised, BetterHUD
+- Tooltip/durability: Jade, AppleSkin, Inspecio, Shulker Box Tooltip
+- Zoom: Logical Zoom, Ok Zoomer, Zoomify, Just Zoom
+- Fullbright: Gamma Utils, Fullbright
+- Free look: Freelook, Perspective Mod Redux
+- Chat: Chat Heads, Chat Patches, Chat Plus
+- Reconnect: Auto Reconnect
+- Culling: Entity Culling
+- Performance: Sodium, Lithium, FerriteCore, ImmediatelyFast, Iris, Indium, ModernFix, Dynamic FPS, Embeddium, Rubidium
+
+These lists are loader-ID hypotheses, not bundled dependencies. A mod is only disabled when Fabric Loader reports its ID; no optional class is required. See `CompatRegistry.java` for the single source of truth.
 
 ## Runtime and build dependencies (not bundled beyond normal mod requirements)
 

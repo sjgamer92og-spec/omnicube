@@ -86,8 +86,9 @@ public final class MacroScreen extends Screen {
 				.bounds(x + bindWidth + 6, secondRow, Math.max(40, width - bindWidth - 6), 18).build();
 		addRenderableWidget(addButton);
 
+		int doneWidth = Math.min(80, Math.max(40, this.width / 4));
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-				.bounds(this.width - 92, this.height - 28, 80, 20).build());
+				.bounds(this.width - doneWidth - 12, this.height - 28, doneWidth, 20).build());
 	}
 
 	private void refresh() {

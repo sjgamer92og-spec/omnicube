@@ -3,6 +3,7 @@ package dev.omnicube.client.gui;
 import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.module.ModuleCategory;
+import dev.omnicube.client.util.OmniCubeText;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -49,7 +50,7 @@ public final class OmniCubeScreen extends Screen {
 		int footerY = this.height - 27;
 		int doneWidth = Math.min(60, Math.max(30, this.width / 5));
 		int doneX = this.width - doneWidth - 10;
-		int buttonWidth = Math.max(24, Math.min(96, (doneX - 18) / 3));
+		int buttonWidth = Math.max(12, Math.min(96, (doneX - 22) / 4));
 		int buttonX = 10;
 
 		addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
@@ -62,6 +63,13 @@ public final class OmniCubeScreen extends Screen {
 		addRenderableWidget(Button.builder(Component.literal("Macros"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new MacroScreen(this));
+			}
+		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		buttonX += buttonWidth + 4;
+
+		addRenderableWidget(Button.builder(Component.literal("Compat"), button -> {
+			if (this.minecraft != null) {
+				this.minecraft.setScreen(new CompatibilityScreen(this));
 			}
 		}).bounds(buttonX, footerY, buttonWidth, 20).build());
 		buttonX += buttonWidth + 4;
@@ -179,7 +187,13 @@ public final class OmniCubeScreen extends Screen {
 
 		Feature hovered = featureAt(mouseX, mouseY);
 		if (hovered != null) {
-			graphics.setTooltipForNextFrame(this.font, Component.literal(hovered.description()), mouseX, mouseY);
+			String tooltip = hovered.isAvailable() ? hovered.description() : hovered.unavailableReason();
+			graphics.setTooltipForNextFrame(this.font, Component.literal(tooltip), mouseX, mouseY);
+		}
+		int conflicts = dev.omnicube.client.keybind.KeybindConflicts.find().size();
+		if (conflicts > 0) {
+			graphics.drawString(this.font, "! " + conflicts + " keybind conflict(s) - see Compatibility",
+					10, this.height - 40, 0xFFFFAA55, false);
 		}
 	}
 
@@ -200,21 +214,25 @@ public final class OmniCubeScreen extends Screen {
 	private void drawFeatureRow(GuiGraphics graphics, Feature feature, int x, int y, int width, int mouseX, int mouseY, int accent) {
 		boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + ROW_HEIGHT;
 		boolean enabled = feature.isEnabled();
+		boolean available = feature.isAvailable();
 		graphics.fill(x, y, x + width, y + ROW_HEIGHT, hovered ? 0x33FFFFFF : 0x22101010);
-		if (enabled) {
+		if (enabled && available) {
 			graphics.fill(x, y, x + 3, y + ROW_HEIGHT, accent);
 		}
 
 		int textWidth = Math.max(20, width - (feature.settings().isEmpty() || width < 180 ? 48 : 128));
 		String name = this.font.plainSubstrByWidth(feature.name(), textWidth);
-		graphics.drawString(this.font, name, x + 9, y + 4, enabled ? 0xFFF2F2F2 : 0xFF9A9A9A, false);
+		int nameColor = !available ? 0xFF666666 : enabled ? 0xFFF2F2F2 : 0xFF9A9A9A;
+		graphics.drawString(this.font, name, x + 9, y + 4, nameColor, false);
 		String subtitle = this.font.plainSubstrByWidth(feature.category().label() + " • " + feature.id(), textWidth);
-		graphics.drawString(this.font, subtitle, x + 9, y + 14, 0xFF777777, false);
+		graphics.drawString(this.font, subtitle, x + 9, y + 14, available ? 0xFF777777 : 0xFF555555, false);
 
 		int stateX = x + width - 28;
-		graphics.drawString(this.font, enabled ? "ON" : "OFF", stateX, y + 8, enabled ? accent : 0xFF777777, true);
+		String state = !available ? "N/A" : enabled ? "ON" : "OFF";
+		graphics.drawString(this.font, state, stateX, y + 8,
+				!available ? 0xFF777777 : enabled ? accent : 0xFF777777, true);
 
-		if (!feature.settings().isEmpty() && width >= 180) {
+		if (!feature.settings().isEmpty() && width >= 180 && available) {
 			graphics.drawString(this.font, "SETTINGS", x + width - 118, y + 8, hovered ? 0xFFFFFFFF : 0xFF8A8A8A, false);
 		}
 	}
@@ -279,6 +297,11 @@ public final class OmniCubeScreen extends Screen {
 		int listW = listWidth();
 		int index = visible.indexOf(feature);
 		int rowY = listTop() - scroll + index * (ROW_HEIGHT + ROW_GAP);
+
+		if (!feature.isAvailable()) {
+			OmniCubeText.sendError(feature.unavailableReason());
+			return true;
+		}
 
 		if (!feature.settings().isEmpty() && settingsHit(mouseX, mouseY, listX, rowY, listW)) {
 			if (this.minecraft != null) {

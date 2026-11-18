@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -20,6 +21,7 @@ public final class TooltipModule extends Module {
 	private final Setting.Bool durability = add(new Setting.Bool("durability", "Durability numbers", true));
 	private final Setting.Bool foodValues = add(new Setting.Bool("food_values", "Food values", true));
 	private final Setting.Num maxLines = add(new Setting.Num("max_container_lines", "Container lines", 8.0D, 1.0D, 27.0D, 1.0D));
+	private boolean failureLogged;
 
 	public TooltipModule() {
 		super("tooltips", "Better Tooltips", "Adds shulker/container previews, durability, food values and optional item IDs to tooltips.", ModuleCategory.MISC, true);
@@ -27,6 +29,14 @@ public final class TooltipModule extends Module {
 
 	public boolean visualPreviewEnabled() {
 		return isEnabled() && visualPreview.get();
+	}
+
+	public void fail(Throwable throwable) {
+		if (!failureLogged) {
+			failureLogged = true;
+			OmniCubeMod.LOGGER.error("[OmniCube] Tooltip hook failed; disabling it for this session.", throwable);
+		}
+		setEnabled(false);
 	}
 
 	public void appendTooltip(ItemStack stack, List<Component> lines) {

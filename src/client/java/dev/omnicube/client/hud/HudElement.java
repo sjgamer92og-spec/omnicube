@@ -25,6 +25,7 @@ public abstract class HudElement implements Feature {
 	private double y;
 	private boolean defaultEnabled = true;
 	private boolean enabled;
+	private String unavailableReason = "";
 	private int measuredWidth = -1;
 	private int measuredHeight = -1;
 
@@ -65,7 +66,25 @@ public abstract class HudElement implements Feature {
 	}
 
 	@Override
+	public boolean isAvailable() {
+		return unavailableReason.isEmpty();
+	}
+
+	@Override
+	public String unavailableReason() {
+		return unavailableReason;
+	}
+
+	public void blockForCompatibility(String reason) {
+		this.unavailableReason = reason == null ? "" : reason;
+		this.enabled = false;
+	}
+
+	@Override
 	public void setEnabled(boolean enabled) {
+		if (enabled && !isAvailable()) {
+			return;
+		}
 		this.enabled = enabled;
 	}
 

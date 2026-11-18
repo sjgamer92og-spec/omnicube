@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(LivingEntityRenderer.class)
+@Mixin(value = LivingEntityRenderer.class, priority = 1500)
 public abstract class LivingEntityRendererMixin {
-	@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true, require = 0)
 	private void omnicube$hideVanillaPlayerNameTag(LivingEntity entity, double distance,
 			CallbackInfoReturnable<Boolean> callbackInfo) {
 		try {
@@ -20,8 +20,12 @@ public abstract class LivingEntityRendererMixin {
 			if (module != null && entity instanceof Player player && module.shouldReplace(player)) {
 				callbackInfo.setReturnValue(false);
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Leave vanilla name tags visible if the module state is unavailable.
+			NameTagModule module = OmniCubeClient.nameTags();
+			if (module != null) {
+				module.fail(throwable);
+			}
 		}
 	}
 }

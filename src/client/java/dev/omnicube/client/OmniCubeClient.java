@@ -2,9 +2,11 @@ package dev.omnicube.client;
 
 import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.command.OmniCubeCommands;
+import dev.omnicube.client.compat.CompatRegistry;
 import dev.omnicube.client.config.OmniCubeConfig;
 import dev.omnicube.client.config.ConfigManager;
 import dev.omnicube.client.feature.Feature;
+import dev.omnicube.client.gui.ChatSearchScreen;
 import dev.omnicube.client.gui.OmniCubeScreen;
 import dev.omnicube.client.gui.HudEditorScreen;
 import dev.omnicube.client.gui.InventoryToolsScreen;
@@ -14,9 +16,15 @@ import dev.omnicube.client.hud.HudManager;
 import dev.omnicube.client.keybind.OmniCubeKeybinds;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleManager;
+import dev.omnicube.client.module.impl.AutoReconnectModule;
+import dev.omnicube.client.module.impl.ChatCollapseModule;
 import dev.omnicube.client.module.impl.ChatLogModule;
 import dev.omnicube.client.module.impl.ChatModule;
 import dev.omnicube.client.module.impl.CoordinatesModule;
+import dev.omnicube.client.module.impl.CrosshairModule;
+import dev.omnicube.client.module.impl.EntityCullingModule;
+import dev.omnicube.client.module.impl.StreamerModule;
+import dev.omnicube.client.module.impl.FpsSafetyModule;
 import dev.omnicube.client.module.impl.FreeLookModule;
 import dev.omnicube.client.module.impl.FullbrightModule;
 import dev.omnicube.client.module.impl.InventoryToolsModule;
@@ -28,6 +36,7 @@ import dev.omnicube.client.module.impl.PerformanceModule;
 import dev.omnicube.client.module.impl.TooltipModule;
 import dev.omnicube.client.module.impl.WaypointModule;
 import dev.omnicube.client.module.impl.ZoomModule;
+import dev.omnicube.client.perf.PerfMonitor;
 import dev.omnicube.client.tooltip.ClientContainerTooltip;
 import dev.omnicube.client.tooltip.ContainerTooltip;
 import dev.omnicube.client.util.OmniCubeText;
@@ -48,6 +57,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class OmniCubeClient implements ClientModInitializer {
 	private static OmniCubeConfig config = new OmniCubeConfig();
@@ -67,6 +77,14 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static NameTagModule nameTagModule;
 	private static MarkerModule markerModule;
 	private static PerformanceModule performanceModule;
+	private static ChatCollapseModule chatCollapseModule;
+	private static int lowFpsTicks;
+	private static boolean fpsGuardArmed = true;
+	private static StreamerModule streamerModule;
+	private static CrosshairModule crosshairModule;
+	private static AutoReconnectModule autoReconnectModule;
+	private static EntityCullingModule entityCullingModule;
+	private static FpsSafetyModule fpsSafetyModule;
 
 	@Override
 	public void onInitializeClient() {
@@ -88,6 +106,12 @@ public final class OmniCubeClient implements ClientModInitializer {
 		hudModule = register(new HudModule());
 		chatLogModule = (ChatLogModule) modules.byId("chat_log");
 		chatModule = register(new ChatModule());
+		chatCollapseModule = register(new ChatCollapseModule());
+		streamerModule = register(new StreamerModule());
+		crosshairModule = register(new CrosshairModule());
+		autoReconnectModule = register(new AutoReconnectModule());
+		entityCullingModule = register(new EntityCullingModule());
+		fpsSafetyModule = register(new FpsSafetyModule());
 		nameTagModule = register(new NameTagModule());
 		markerModule = register(new MarkerModule());
 		register(new InventoryToolsModule());
@@ -95,6 +119,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 		HudElements.register(hud);
 		modules.read(config.modules);
 		hud.read(config.hud);
+		CompatRegistry.detectAndApply(features());
+		logCompatibilitySummary();
 		if (hudModule != null && hudModule.isEnabled()) {
 			HudElement.background = hudModule.backgroundEnabled();
 		}
@@ -118,44 +144,83 @@ public final class OmniCubeClient implements ClientModInitializer {
 					}
 				});
 
+		// Fabric's HUD registry is deliberately used instead of patching vanilla
+		// rendering, so Sodium/Iris keep drawing the crosshair through their path.
+		try {
+			HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (graphics, tickCounter) -> {
+				long started = PerfMonitor.start();
+				try {
+					if (crosshairModule != null && crosshairModule.isEnabled()) {
+						crosshairModule.render(graphics);
+					} else if (original != null) {
+						original.render(graphics, tickCounter);
+					}
+				} finally {
+					PerfMonitor.record("render.crosshair", started);
+				}
+			});
+		} catch (Throwable throwable) {
+			OmniCubeMod.LOGGER.warn("[OmniCube] Could not register the custom crosshair; the vanilla one will be used.", throwable);
+		}
+
 		ItemTooltipCallback.EVENT.register((stack, tooltipContext, tooltipType, lines) -> {
-			if (tooltipModule != null && !lines.isEmpty()) {
-				tooltipModule.appendTooltip(stack, lines);
+			long started = PerfMonitor.start();
+			try {
+				if (tooltipModule != null && !lines.isEmpty()) {
+					tooltipModule.appendTooltip(stack, lines);
+				}
+			} finally {
+				PerfMonitor.record("tooltip.append", started);
 			}
 		});
 
 		ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, timestamp) -> {
+			long started = PerfMonitor.start();
 			try {
-				if (chatModule == null) {
-					return true;
+				Component display = message;
+				if (streamerModule != null) {
+					display = streamerModule.redact(display);
 				}
-				chatModule.remember(message);
-				if (!chatModule.timestampEnabled()) {
-					return true;
+				boolean timestamped = chatModule != null && chatModule.timestampEnabled();
+				if (timestamped) {
+					display = chatModule.decorate(display);
 				}
-				if (chatLogModule != null) {
-					chatLogModule.recordChat(message.getString());
+				if (chatModule != null) {
+					chatModule.remember(display);
 				}
-				Minecraft client = Minecraft.getInstance();
-				Component decorated = chatModule.decorate(message);
-				client.execute(() -> {
-					try {
-						client.gui.getChat().addMessage(decorated);
-					} catch (Throwable ignored) {
-						// The message is simply dropped if the chat HUD is unavailable.
+				boolean changed = timestamped || !display.equals(message);
+				if (changed) {
+					if (chatLogModule != null) {
+						chatLogModule.recordChat(display.getString());
 					}
-				});
-				return false;
+					Minecraft client = Minecraft.getInstance();
+					Component finalDisplay = display;
+					client.execute(() -> {
+						try {
+							client.gui.getChat().addMessage(finalDisplay);
+						} catch (Throwable ignored) {
+							// The message is simply dropped if the chat HUD is unavailable.
+						}
+					});
+				}
+				return !changed;
 			} catch (Throwable throwable) {
 				return true;
+			} finally {
+				PerfMonitor.record("chat.receive", started);
 			}
 		});
 
 		ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
 			try {
-				if (!overlay && chatModule != null && chatModule.timestampEnabled()) {
-					return chatModule.decorate(message);
+				Component display = message;
+				if (!overlay && streamerModule != null) {
+					display = streamerModule.redact(display);
 				}
+				if (!overlay && chatModule != null && chatModule.timestampEnabled()) {
+					display = chatModule.decorate(display);
+				}
+				return display;
 			} catch (Throwable ignored) {
 				// Keep the original game message.
 			}
@@ -175,19 +240,25 @@ public final class OmniCubeClient implements ClientModInitializer {
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+			long nameTagsStarted = PerfMonitor.start();
 			try {
 				if (nameTagModule != null) {
 					nameTagModule.render(context);
 				}
 			} catch (Throwable ignored) {
 				// One world feature must not break another or the vanilla pass.
+			} finally {
+				PerfMonitor.record("render.name_tags", nameTagsStarted);
 			}
+			long markersStarted = PerfMonitor.start();
 			try {
 				if (markerModule != null) {
 					markerModule.render(context);
 				}
 			} catch (Throwable ignored) {
 				// Same isolation for markers.
+			} finally {
+				PerfMonitor.record("render.world_markers", markersStarted);
 			}
 		});
 
@@ -196,8 +267,25 @@ public final class OmniCubeClient implements ClientModInitializer {
 			if (performanceModule != null && performanceModule.isEnabled()) {
 				performanceModule.captureForSession();
 			}
+			if (chatCollapseModule != null) {
+				chatCollapseModule.reset();
+			}
+			if (autoReconnectModule != null) {
+				autoReconnectModule.reset();
+				autoReconnectModule.rememberServer(client);
+			}
+			lowFpsTicks = 0;
+			fpsGuardArmed = true;
 		});
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> restoreSessionOptions());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			restoreSessionOptions();
+			if (chatCollapseModule != null) {
+				chatCollapseModule.reset();
+			}
+			if (autoReconnectModule != null) {
+				autoReconnectModule.onDisconnect(client);
+			}
+		});
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
 			restoreSessionOptions();
 			saveConfig();
@@ -251,10 +339,103 @@ public final class OmniCubeClient implements ClientModInitializer {
 					}
 				}
 			}
+			if (OmniCubeKeybinds.chatSearch != null) {
+				while (OmniCubeKeybinds.chatSearch.consumeClick()) {
+					if (chatModule != null && chatModule.isEnabled()) {
+						client.setScreen(new ChatSearchScreen(null));
+					} else {
+						OmniCubeText.sendError("Enable Better Chat first.");
+					}
+				}
+			}
 		}
 
-		modules.tick(client);
+		long perfStart = PerfMonitor.start();
+		try {
+			modules.tick(client);
+		} finally {
+			PerfMonitor.record("modules.tick", perfStart);
+		}
+		if (autoReconnectModule != null) {
+			try {
+				autoReconnectModule.tick(client);
+			} catch (Throwable throwable) {
+				OmniCubeMod.LOGGER.warn("[OmniCube] Auto Reconnect tick failed; resetting it.", throwable);
+				autoReconnectModule.reset();
+			}
+		}
+		fpsGuardTick(client);
 	}
+
+	private static void fpsGuardTick(Minecraft client) {
+		try {
+			if (client.player == null || client.level == null || client.screen != null
+					|| fpsSafetyModule == null || !fpsSafetyModule.isEnabled()) {
+				lowFpsTicks = 0;
+				return;
+			}
+			int fps = client.getFps();
+			if (fps > 0 && fps < Math.max(10, fpsSafetyModule.floor())) {
+				lowFpsTicks++;
+			} else {
+				lowFpsTicks = 0;
+			}
+			if (lowFpsTicks >= 100 && fpsGuardArmed) {
+				fpsGuardArmed = false;
+				lowFpsTicks = 0;
+				List<String> disabled = disableHeavyFeatures();
+				if (!disabled.isEmpty()) {
+					OmniCubeText.sendError("FPS safety: below " + fpsSafetyModule.floor() + " FPS, disabled "
+							+ String.join(", ", disabled) + ".");
+					OmniCubeMod.LOGGER.warn("[OmniCube] FPS safety disabled: {}", disabled);
+					OmniCubeClient.saveConfig();
+				}
+			}
+		} catch (Throwable throwable) {
+			OmniCubeMod.LOGGER.debug("[OmniCube] FPS safety check failed.", throwable);
+		}
+	}
+
+	public static List<String> disableHeavyFeatures() {
+		List<String> disabled = new ArrayList<>();
+		for (String id : List.of("free_look", "name_tags", "world_markers", "entity_culling", "inventory_tools",
+				"hud_entities", "hud_tnt", "hud_keystrokes", "hud_cps")) {
+			Feature feature = featureById(id);
+			if (feature != null && feature.isEnabled()) {
+				feature.setEnabled(false);
+				disabled.add(id);
+			}
+		}
+		return disabled;
+	}
+
+	public static void applyLowEndPreset() {
+		List<String> disabled = new ArrayList<>();
+		for (String id : List.of("free_look", "name_tags", "world_markers", "entity_culling", "inventory_tools",
+				"chat_log", "hud_session", "hud_clock", "hud_timer", "hud_tnt", "hud_waypoint", "hud_experience",
+				"hud_potions", "hud_armor", "hud_durability", "hud_keystrokes", "hud_cps", "hud_entities",
+				"hud_speed", "hud_biome", "hud_facing", "hud_ping", "hud_server", "hud_memory")) {
+			Feature feature = featureById(id);
+			if (feature != null && feature.isEnabled()) {
+				feature.setEnabled(false);
+				disabled.add(id);
+			}
+		}
+		String performance = "already on";
+		if (performanceModule != null) {
+			if (!performanceModule.isAvailable()) {
+				performance = "skipped (another performance mod is active)";
+			} else if (!performanceModule.isEnabled()) {
+				performanceModule.setEnabled(true);
+				performance = "enabled";
+			}
+		}
+		fpsGuardArmed = false;
+		saveConfig();
+		OmniCubeText.send("Low-end preset applied: disabled " + disabled.size()
+				+ " heavy features; Performance " + performance + ".");
+	}
+
 
 	private static void quickWaypoint(LocalPlayer player) {
 		if (waypointModule == null || !waypointModule.isEnabled()) {
@@ -280,6 +461,43 @@ public final class OmniCubeClient implements ClientModInitializer {
 		} catch (Throwable throwable) {
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not restore options while leaving the world.", throwable);
 		}
+	}
+
+	private static void logCompatibilitySummary() {
+		try {
+			List<CompatRegistry.DetectedMod> mods = CompatRegistry.detectedMods();
+			if (mods.isEmpty()) {
+				OmniCubeMod.LOGGER.info("[OmniCube] Compatibility: no known overlapping mods detected.");
+				return;
+			}
+			OmniCubeMod.LOGGER.info("[OmniCube] Compatibility: {} overlapping mod(s) detected.", mods.size());
+			for (CompatRegistry.DetectedMod mod : mods) {
+				OmniCubeMod.LOGGER.info("[OmniCube]   {} ({}) -> disabled: {}", mod.name(), mod.id(),
+						mod.featureIds().isEmpty() ? "none" : String.join(", ", mod.featureIds()));
+			}
+			for (Map.Entry<String, String> entry : CompatRegistry.disabledFeatures().entrySet()) {
+				OmniCubeMod.LOGGER.info("[OmniCube]   reason for {}: {}", entry.getKey(), entry.getValue());
+			}
+		} catch (Throwable throwable) {
+			OmniCubeMod.LOGGER.warn("[OmniCube] Could not log the compatibility summary.", throwable);
+		}
+	}
+
+	public static List<String> compatibilityLines() {
+		List<String> lines = new ArrayList<>();
+		try {
+			lines.addAll(CompatRegistry.summaryLines());
+			if (!CompatRegistry.disabledFeatures().isEmpty()) {
+				lines.add("");
+				lines.add("Disabled features:");
+				for (Map.Entry<String, String> entry : CompatRegistry.disabledFeatures().entrySet()) {
+					lines.add("  " + entry.getKey() + ": " + entry.getValue());
+				}
+			}
+		} catch (Throwable throwable) {
+			lines.add("Compatibility information is unavailable.");
+		}
+		return lines;
 	}
 
 	public static void saveConfig() {
@@ -342,6 +560,30 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static NameTagModule nameTags() {
 		return nameTagModule;
+	}
+
+	public static ChatCollapseModule chatCollapse() {
+		return chatCollapseModule;
+	}
+
+	public static StreamerModule streamer() {
+		return streamerModule;
+	}
+
+	public static CrosshairModule crosshair() {
+		return crosshairModule;
+	}
+
+	public static AutoReconnectModule autoReconnect() {
+		return autoReconnectModule;
+	}
+
+	public static EntityCullingModule entityCulling() {
+		return entityCullingModule;
+	}
+
+	public static FpsSafetyModule fpsSafety() {
+		return fpsSafetyModule;
 	}
 
 	public static List<Feature> features() {

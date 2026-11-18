@@ -65,7 +65,7 @@ public final class InventoryToolsScreen extends Screen {
 		addRenderableWidget(search);
 
 		int footer = this.height - 28;
-		int buttonWidth = Math.max(38, Math.min(100, (width - 20) / 3 - 4));
+		int buttonWidth = Math.max(12, Math.min(100, (width - 8) / 3 - 4));
 		quickMoveButton = Button.builder(Component.literal("Quick move"), button -> quickMove())
 				.bounds(x, footer, buttonWidth, 20).build();
 		sortButton = Button.builder(Component.literal("Sort: off"), button -> {

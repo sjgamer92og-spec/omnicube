@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.render.WorldTextRenderer;
@@ -21,9 +22,18 @@ public final class NameTagModule extends Module {
 	private final Setting.Bool showDistance = add(new Setting.Bool("show_distance", "Show distance", true));
 	private final Setting.Num maxDistance = add(new Setting.Num("max_distance", "Maximum distance", 64.0D, 8.0D, 256.0D, 8.0D));
 	private final Setting.Num scale = add(new Setting.Num("scale", "Tag scale", 1.0D, 0.5D, 1.8D, 0.1D));
+	private boolean failureLogged;
 
 	public NameTagModule() {
 		super("name_tags", "Name Tags+", "Adds client-side player tags with health and distance above players.", ModuleCategory.PLAYER, false);
+	}
+
+	public void fail(Throwable throwable) {
+		if (!failureLogged) {
+			failureLogged = true;
+			OmniCubeMod.LOGGER.error("[OmniCube] Name tag hook failed; disabling it for this session.", throwable);
+		}
+		setEnabled(false);
 	}
 
 	public boolean shouldReplace(Player player) {

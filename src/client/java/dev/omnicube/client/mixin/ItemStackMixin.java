@@ -16,9 +16,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Mixin(ItemStack.class)
+@Mixin(value = ItemStack.class, priority = 1500)
 public abstract class ItemStackMixin {
-	@Inject(method = "getTooltipImage", at = @At("RETURN"), cancellable = true)
+	@Inject(method = "getTooltipImage", at = @At("RETURN"), cancellable = true, require = 0)
 	private void omnicube$containerPreview(CallbackInfoReturnable<Optional<TooltipComponent>> callbackInfo) {
 		try {
 			Optional<TooltipComponent> vanilla = callbackInfo.getReturnValue();
@@ -43,8 +43,12 @@ public abstract class ItemStackMixin {
 			if (!stacks.isEmpty()) {
 				callbackInfo.setReturnValue(Optional.of(new ContainerTooltip(stacks)));
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Keep vanilla tooltips working if a stack has unusual container data.
+			TooltipModule module = OmniCubeClient.tooltips();
+			if (module != null) {
+				module.fail(throwable);
+			}
 		}
 	}
 }

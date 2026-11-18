@@ -10,11 +10,16 @@ import net.minecraft.network.chat.MutableComponent;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 public final class ChatModule extends Module {
 	private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("HH:mm");
 
 	private final Setting.Bool timestamps = add(new Setting.Bool("timestamps", "Show timestamps", true));
+	private final Deque<String> history = new ArrayDeque<>();
 	private volatile String lastMessage = "";
 
 	public ChatModule() {
@@ -26,8 +31,23 @@ public final class ChatModule extends Module {
 	}
 
 	public void remember(Component message) {
-		if (isEnabled() && message != null) {
-			lastMessage = message.getString();
+		if (!isEnabled() || message == null) {
+			return;
+		}
+		lastMessage = message.getString();
+		synchronized (history) {
+			history.addLast(lastMessage);
+			while (history.size() > 200) {
+				history.removeFirst();
+			}
+		}
+	}
+
+	public List<String> history() {
+		synchronized (history) {
+			List<String> copy = new ArrayList<>(history);
+			java.util.Collections.reverse(copy);
+			return copy;
 		}
 	}
 

@@ -26,6 +26,14 @@
 		{
 			"config": "omnicube.mixins.json",
 			"environment": "client"
+		},
+		{
+			"config": "omnicube.chat.mixins.json",
+			"environment": "client"
+		},
+		{
+			"config": "omnicube.culling.mixins.json",
+			"environment": "client"
 		}
 	],
 	"depends": {

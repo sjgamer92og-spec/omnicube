@@ -7,8 +7,10 @@ import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.compat.ClientCompat;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.gui.OmniCubeScreen;
+import dev.omnicube.client.gui.ChatSearchScreen;
 import dev.omnicube.client.gui.HudEditorScreen;
 import dev.omnicube.client.macro.Macro;
+import dev.omnicube.client.perf.PerfMonitor;
 import dev.omnicube.client.module.impl.MacroModule;
 import dev.omnicube.client.module.impl.WaypointModule;
 import dev.omnicube.client.util.OmniCubeText;
@@ -62,6 +64,10 @@ public final class OmniCubeCommands {
 						.then(ClientCommandManager.literal("config").executes(context -> openConfig(context.getSource())))
 						.then(ClientCommandManager.literal("hud").executes(context -> openHudEditor(context.getSource())))
 						.then(ClientCommandManager.literal("list").executes(context -> list(context.getSource())))
+						.then(ClientCommandManager.literal("compat").executes(context -> compat(context.getSource())))
+						.then(ClientCommandManager.literal("perf").executes(context -> perf(context.getSource())))
+						.then(ClientCommandManager.literal("chatsearch").executes(context -> chatSearch(context.getSource())))
+						.then(ClientCommandManager.literal("lowend").executes(context -> lowEnd(context.getSource())))
 						.then(ClientCommandManager.literal("toggle")
 								.then(ClientCommandManager.argument("feature", StringArgumentType.word())
 										.suggests(FEATURE_IDS)
@@ -145,10 +151,51 @@ public final class OmniCubeCommands {
 			source.sendError(Component.literal("Unknown feature: " + id));
 			return 0;
 		}
+		if (!feature.isAvailable()) {
+			source.sendError(Component.literal(feature.unavailableReason()));
+			return 0;
+		}
 		feature.setEnabled(!feature.isEnabled());
 		OmniCubeClient.saveConfig();
 		source.sendFeedback(Component.literal("[OmniCube] " + feature.name() + " is now " + (feature.isEnabled() ? "ON" : "OFF"))
 				.withStyle(feature.isEnabled() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+		return 1;
+	}
+
+	private static int compat(FabricClientCommandSource source) {
+		source.sendFeedback(Component.literal("[OmniCube] Compatibility report")
+				.withStyle(ChatFormatting.GREEN));
+		for (String line : OmniCubeClient.compatibilityLines()) {
+			if (!line.isBlank()) {
+				source.sendFeedback(Component.literal(line).withStyle(ChatFormatting.GRAY));
+			}
+		}
+		return 1;
+	}
+
+	private static int perf(FabricClientCommandSource source) {
+		PerfMonitor.enable();
+		List<String> lines = PerfMonitor.summary();
+		if (lines.isEmpty()) {
+			source.sendFeedback(Component.literal("[OmniCube] Profiling enabled; play for a while, then run /omnicube perf again.")
+					.withStyle(ChatFormatting.GREEN));
+			return 1;
+		}
+		source.sendFeedback(Component.literal("[OmniCube] Client callback timings (not GPU):")
+				.withStyle(ChatFormatting.GREEN));
+		for (String line : lines) {
+			source.sendFeedback(Component.literal("  " + line).withStyle(ChatFormatting.GRAY));
+		}
+		return 1;
+	}
+
+	private static int chatSearch(FabricClientCommandSource source) {
+		source.getClient().execute(() -> source.getClient().setScreen(new ChatSearchScreen(null)));
+		return 1;
+	}
+
+	private static int lowEnd(FabricClientCommandSource source) {
+		OmniCubeClient.applyLowEndPreset();
 		return 1;
 	}
 

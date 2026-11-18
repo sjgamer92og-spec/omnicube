@@ -120,6 +120,10 @@ public final class HudElements {
 			if (player == null) {
 				return fallback();
 			}
+			var streamer = OmniCubeClient.streamer();
+			if (streamer != null && streamer.hideCoordinates()) {
+				return List.of("Coordinates  hidden", "Streamer Mode");
+			}
 			BlockPos pos = player.blockPosition();
 			return List.of(
 					String.format(Locale.ROOT, "XYZ  %.1f / %.1f / %.1f", player.getX(), player.getY(), player.getZ()),
@@ -256,6 +260,10 @@ public final class HudElements {
 		public List<String> lines(Minecraft client) {
 			if (client.getConnection() == null) {
 				return fallback();
+			}
+			var streamer = OmniCubeClient.streamer();
+			if (streamer != null && streamer.hideServer()) {
+				return List.of("Server  hidden", "Streamer Mode");
 			}
 			try {
 				ServerData data = client.getConnection().getServerData();

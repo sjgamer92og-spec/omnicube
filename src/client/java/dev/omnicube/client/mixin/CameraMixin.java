@@ -11,12 +11,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Camera.class)
+@Mixin(value = Camera.class, priority = 1500)
 public abstract class CameraMixin {
 	@Shadow
 	protected abstract void setRotation(float yaw, float pitch);
 
-	@Inject(method = "setup", at = @At("RETURN"))
+	@Inject(method = "setup", at = @At("RETURN"), require = 0)
 	private void omnicube$applyFreeLook(Level level, Entity entity, boolean detached, boolean thirdPersonReverse,
 			float partialTick, CallbackInfo callbackInfo) {
 		try {
@@ -24,8 +24,12 @@ public abstract class CameraMixin {
 			if (module != null && module.isLooking()) {
 				setRotation(module.cameraYaw(), module.cameraPitch());
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// A broken camera hook must leave the vanilla camera untouched.
+			FreeLookModule module = OmniCubeClient.freeLook();
+			if (module != null) {
+				module.fail(throwable);
+			}
 		}
 	}
 }

@@ -3,6 +3,8 @@ package dev.omnicube.client.setting;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
+import java.util.List;
+
 /**
  * A single configurable value owned by a {@link dev.omnicube.client.module.Module}.
  * Settings are intentionally tiny and dependency-free so a config file written by
@@ -81,6 +83,77 @@ public abstract class Setting<T> {
 		@Override
 		public String displayValue() {
 			return get() ? "ON" : "OFF";
+		}
+	}
+
+	public static final class Choice extends Setting<String> {
+		private final List<String> options;
+
+		public Choice(String id, String name, List<String> options, String defaultValue) {
+			super(id, name, defaultValue);
+			this.options = List.copyOf(options);
+			if (this.options.isEmpty()) {
+				throw new IllegalArgumentException("A choice setting needs at least one option");
+			}
+			if (!this.options.contains(defaultValue)) {
+				this.value = this.options.getFirst();
+			}
+		}
+
+		public List<String> options() {
+			return options;
+		}
+
+		public int index() {
+			int index = options.indexOf(get());
+			return index < 0 ? 0 : index;
+		}
+
+		public void next() {
+			set(options.get((index() + 1) % options.size()));
+		}
+
+		@Override
+		public void set(String newValue) {
+			if (newValue != null && options.contains(newValue)) {
+				super.set(newValue);
+			}
+		}
+
+		@Override
+		public JsonElement toJson() {
+			return new JsonPrimitive(get());
+		}
+
+		@Override
+		public void fromJson(JsonElement json) {
+			try {
+				if (json != null && json.isJsonPrimitive()) {
+					if (json.getAsJsonPrimitive().isNumber()) {
+						set(options.get(Math.max(0, Math.min(options.size() - 1, json.getAsInt()))));
+					} else {
+						set(json.getAsString());
+					}
+				}
+			} catch (RuntimeException ignored) {
+				// Keep the default on malformed input.
+			}
+		}
+
+		@Override
+		public String displayValue() {
+			return get();
+		}
+
+		@Override
+		public boolean adjustable() {
+			return true;
+		}
+
+		@Override
+		public void adjust(int direction) {
+			int next = (index() + (direction < 0 ? options.size() - 1 : 1)) % options.size();
+			set(options.get(next));
 		}
 	}
 

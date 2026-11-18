@@ -22,6 +22,18 @@ public interface Feature {
 
 	void setEnabled(boolean enabled);
 
+	/**
+	 * False when another mod already provides this feature. The config screen
+	 * shows such features greyed out and refuses to enable them.
+	 */
+	default boolean isAvailable() {
+		return true;
+	}
+
+	default String unavailableReason() {
+		return "";
+	}
+
 	default List<Setting<?>> settings() {
 		return List.of();
 	}

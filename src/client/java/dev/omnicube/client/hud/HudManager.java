@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.feature.Feature;
+import dev.omnicube.client.perf.PerfMonitor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -46,6 +47,7 @@ public final class HudManager {
 			if (!element.isEnabled()) {
 				continue;
 			}
+			long started = PerfMonitor.start();
 			try {
 				element.measure(client);
 				int x = element.screenX(client, guiWidth);
@@ -57,12 +59,17 @@ public final class HudManager {
 					errorLogged = true;
 					OmniCubeMod.LOGGER.error("[OmniCube] HUD element '{}' failed and was disabled.", element.id(), throwable);
 				}
+			} finally {
+				PerfMonitor.record("hud." + element.id(), started);
 			}
 		}
 	}
 
 	public void write(JsonObject root) {
 		for (HudElement element : elements) {
+			if (!element.isAvailable()) {
+				continue;
+			}
 			JsonObject entry = new JsonObject();
 			entry.addProperty("x", element.x());
 			entry.addProperty("y", element.y());

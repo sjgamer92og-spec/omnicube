@@ -20,6 +20,7 @@ public abstract class Module implements Feature {
 	private final boolean defaultEnabled;
 	private final List<Setting<?>> settings = new ArrayList<>();
 	private boolean enabled;
+	private String unavailableReason = "";
 
 	protected Module(String id, String name, String description, ModuleCategory category, boolean defaultEnabled) {
 		this.id = id;
@@ -69,7 +70,27 @@ public abstract class Module implements Feature {
 	}
 
 	@Override
+	public boolean isAvailable() {
+		return unavailableReason.isEmpty();
+	}
+
+	@Override
+	public String unavailableReason() {
+		return unavailableReason;
+	}
+
+	public void blockForCompatibility(String reason) {
+		this.unavailableReason = reason == null ? "" : reason;
+		if (this.enabled) {
+			setEnabled(false);
+		}
+	}
+
+	@Override
 	public void setEnabled(boolean newState) {
+		if (newState && !isAvailable()) {
+			return;
+		}
 		if (newState == enabled) {
 			return;
 		}

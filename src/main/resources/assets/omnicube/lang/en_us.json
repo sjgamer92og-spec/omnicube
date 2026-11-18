@@ -9,6 +9,7 @@
 	"key.omnicube.free_look": "Free look (hold)",
 	"key.omnicube.copy_chat": "Copy last chat message",
 	"key.omnicube.inventory_tools": "Open inventory tools",
+	"key.omnicube.chat_search": "Search chat history",
 	"modmenu.nameTranslation.omnicube": "OmniCube",
 	"modmenu.summaryTranslation.omnicube": "All-in-one client toolkit: HUD, QoL, waypoints, macros and adaptive performance."
 }

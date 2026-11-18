@@ -9,14 +9,14 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(MouseHandler.class)
+@Mixin(value = MouseHandler.class, priority = 1500)
 public abstract class MouseHandlerMixin {
 	@Shadow
 	private double accumulatedDX;
 	@Shadow
 	private double accumulatedDY;
 
-	@Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true)
+	@Inject(method = "turnPlayer", at = @At("HEAD"), cancellable = true, require = 0)
 	private void omnicube$freeLook(double value, CallbackInfo callbackInfo) {
 		try {
 			FreeLookModule module = OmniCubeClient.freeLook();
@@ -25,8 +25,12 @@ public abstract class MouseHandlerMixin {
 				accumulatedDY = 0.0D;
 				callbackInfo.cancel();
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// If anything goes wrong, let vanilla handle the mouse normally.
+			FreeLookModule module = OmniCubeClient.freeLook();
+			if (module != null) {
+				module.fail(throwable);
+			}
 		}
 	}
 }

@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.feature.Feature;
+import dev.omnicube.client.perf.PerfMonitor;
 import dev.omnicube.client.setting.Setting;
 import net.minecraft.client.Minecraft;
 
@@ -41,6 +42,7 @@ public final class ModuleManager {
 			if (!module.isEnabled()) {
 				continue;
 			}
+			long started = PerfMonitor.start();
 			try {
 				module.tick();
 			} catch (Throwable throwable) {
@@ -50,12 +52,19 @@ public final class ModuleManager {
 					errorLogged = true;
 					OmniCubeMod.LOGGER.error("[OmniCube] Module '{}' threw during tick and was disabled.", module.id(), throwable);
 				}
+			} finally {
+				PerfMonitor.record("tick." + module.id(), started);
 			}
 		}
 	}
 
 	public void write(JsonObject root) {
 		for (Module module : modules) {
+			// Preserve the user's previous enabled state while a feature is
+			// temporarily blocked by another mod. Removing that mod can restore it.
+			if (!module.isAvailable()) {
+				continue;
+			}
 			JsonObject entry = new JsonObject();
 			entry.addProperty("enabled", module.isEnabled());
 			JsonObject values = new JsonObject();

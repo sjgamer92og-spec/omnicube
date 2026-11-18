@@ -1,0 +1,13 @@
+{
+	"required": false,
+	"minVersion": "0.8",
+	"package": "dev.omnicube.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ChatComponentMixin",
+		"ChatComponentAccessor"
+	],
+	"injectors": {
+		"defaultRequire": 0
+	}
+}
