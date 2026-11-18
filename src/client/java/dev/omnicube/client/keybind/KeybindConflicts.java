@@ -34,7 +34,7 @@ public final class KeybindConflicts {
 					continue;
 				}
 				for (KeyMapping other : client.options.keyMappings) {
-					if (other == mine || other.isUnbound()) {
+					if (other == mine || other.isUnbound() || ours.contains(other)) {
 						continue;
 					}
 					if (mine.same(other)) {

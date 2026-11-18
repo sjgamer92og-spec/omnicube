@@ -119,7 +119,11 @@ public final class OmniCubeClient implements ClientModInitializer {
 		HudElements.register(hud);
 		modules.read(config.modules);
 		hud.read(config.hud);
-		CompatRegistry.detectAndApply(features());
+		try {
+			CompatRegistry.detectAndApply(features());
+		} catch (Throwable throwable) {
+			OmniCubeMod.LOGGER.error("[OmniCube] Compatibility detection failed; all features keep their configured state.", throwable);
+		}
 		logCompatibilitySummary();
 		if (hudModule != null && hudModule.isEnabled()) {
 			HudElement.background = hudModule.backgroundEnabled();
@@ -556,6 +560,10 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static ChatModule chat() {
 		return chatModule;
+	}
+
+	public static ChatLogModule chatLog() {
+		return chatLogModule;
 	}
 
 	public static NameTagModule nameTags() {

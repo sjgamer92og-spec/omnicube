@@ -27,6 +27,7 @@ public final class OmniCubeScreen extends Screen {
 	private int scroll;
 	private EditBox search;
 	private List<Feature> visible = new ArrayList<>();
+	private int keybindConflicts;
 
 	public OmniCubeScreen(Screen parent) {
 		super(Component.literal("OmniCube"));
@@ -83,6 +84,7 @@ public final class OmniCubeScreen extends Screen {
 				.bounds(doneX, footerY, doneWidth, 20).build());
 
 		refresh();
+		keybindConflicts = dev.omnicube.client.keybind.KeybindConflicts.find().size();
 	}
 
 	private void refresh() {
@@ -190,9 +192,8 @@ public final class OmniCubeScreen extends Screen {
 			String tooltip = hovered.isAvailable() ? hovered.description() : hovered.unavailableReason();
 			graphics.setTooltipForNextFrame(this.font, Component.literal(tooltip), mouseX, mouseY);
 		}
-		int conflicts = dev.omnicube.client.keybind.KeybindConflicts.find().size();
-		if (conflicts > 0) {
-			graphics.drawString(this.font, "! " + conflicts + " keybind conflict(s) - see Compatibility",
+		if (keybindConflicts > 0) {
+			graphics.drawString(this.font, "! " + keybindConflicts + " keybind conflict(s) - see Compatibility",
 					10, this.height - 40, 0xFFFFAA55, false);
 		}
 	}

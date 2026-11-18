@@ -49,7 +49,7 @@ public final class AutoReconnectModule extends Module {
 	}
 
 	public void onDisconnect(Minecraft client) {
-					try {
+		try {
 			if (!isEnabled() || client == null || !multiplayerSession) {
 				return;
 			}

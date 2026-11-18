@@ -36,13 +36,15 @@ public final class ChatSearchScreen extends Screen {
 			rebuild();
 		});
 		addRenderableWidget(search);
-		int doneWidth = Math.min(64, Math.max(28, width / 3));
+		int doneWidth = Math.min(64, Math.max(16, width / 3));
 		int doneX = x + width - doneWidth;
-		int clearWidth = Math.min(70, Math.max(20, doneX - x - 4));
-		addRenderableWidget(Button.builder(Component.literal("Clear"), button -> {
-			search.setValue("");
-			rebuild();
-		}).bounds(x, this.height - 28, clearWidth, 20).build());
+		int clearWidth = Math.min(70, doneX - x - 4);
+		if (clearWidth >= 14) {
+			addRenderableWidget(Button.builder(Component.literal("Clear"), button -> {
+				search.setValue("");
+				rebuild();
+			}).bounds(x, this.height - 28, clearWidth, 20).build());
+		}
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
 				.bounds(doneX, this.height - 28, doneWidth, 20).build());
 		rebuild();

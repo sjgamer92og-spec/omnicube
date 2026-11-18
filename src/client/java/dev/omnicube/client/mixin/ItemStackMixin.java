@@ -18,6 +18,8 @@ import java.util.Optional;
 
 @Mixin(value = ItemStack.class, priority = 1500)
 public abstract class ItemStackMixin {
+	private static final int MAX_PREVIEW_STACKS = 27;
+
 	@Inject(method = "getTooltipImage", at = @At("RETURN"), cancellable = true, require = 0)
 	private void omnicube$containerPreview(CallbackInfoReturnable<Optional<TooltipComponent>> callbackInfo) {
 		try {
@@ -36,6 +38,9 @@ public abstract class ItemStackMixin {
 			}
 			List<ItemStack> stacks = new ArrayList<>();
 			for (ItemStack stored : contents.nonEmptyItemsCopy()) {
+				if (stacks.size() >= MAX_PREVIEW_STACKS) {
+					break;
+				}
 				if (stored != null && !stored.isEmpty()) {
 					stacks.add(stored);
 				}

@@ -117,7 +117,8 @@ public abstract class HudElement implements Feature {
 
 	public void setDefaultEnabled(boolean enabled) {
 		this.defaultEnabled = enabled;
-		this.enabled = enabled;
+		// A compatibility block must survive layout resets and config reloads.
+		this.enabled = enabled && isAvailable();
 	}
 
 	public int screenX(Minecraft client, int guiWidth) {

@@ -44,12 +44,13 @@ public final class CrosshairModule extends Module {
 				}
 				case "Circle" -> drawCircle(graphics, centerX, centerY, Math.max(1, size / 2), color);
 				default -> {
-					int half = Math.max(1, size / 2);
-					int gap = Math.max(1, size / 5);
+					// Keep at least one visible pixel per arm even at the minimum size.
+					int half = Math.max(2, size / 2);
+					int gap = Math.max(1, Math.min(half - 1, size / 6));
 					graphics.fill(centerX - half, centerY, centerX - gap, centerY + 1, color);
-					graphics.fill(centerX + gap + 1, centerY, centerX + half, centerY + 1, color);
+					graphics.fill(centerX + gap, centerY, centerX + half, centerY + 1, color);
 					graphics.fill(centerX, centerY - half, centerX + 1, centerY - gap, color);
-					graphics.fill(centerX, centerY + gap + 1, centerX + 1, centerY + half, color);
+					graphics.fill(centerX, centerY + gap, centerX + 1, centerY + half, color);
 				}
 			}
 		} catch (Throwable ignored) {

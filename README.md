@@ -142,7 +142,7 @@ OmniCube checks `FabricLoader.isModLoaded()` at startup. The complete table live
 | Chat Heads, Chat Patches, Chat Plus | Better Chat, Chat Spam Collapse |
 | Auto Reconnect | Auto Reconnect |
 | Entity Culling | Entity Culling, Performance |
-| Sodium, Lithium, FerriteCore, ImmediatelyFast, Iris, Indium, ModernFix, Dynamic FPS, Embeddium, Rubidium | Performance |
+| Sodium, Sodium Extra, VulkanMod, Lithium, FerriteCore, ImmediatelyFast, Iris, Indium, ModernFix, Dynamic FPS, Embeddium, Rubidium | Performance |
 
 When a feature is provided elsewhere:
 
@@ -220,12 +220,12 @@ src/client/java/dev/omnicube/client/
 
 ## Audit fixes in this round
 
-- Chat: removed the double-logging path when timestamps cancel and re-add a message; logs are now written once. Chat history has a 200-message cap and the search screen has responsive footer buttons.
-- GUI: settings now scroll instead of overlapping the Done button on small screens; HUD editor, Compatibility and Inventory Tools footer buttons reflow; unavailable rows are visibly greyed and explain themselves.
+- Chat: removed the double-logging path when timestamps cancel and re-add a message; logs are now written once. Chat history has a 200-message cap and the search screen has responsive footer buttons. Chat Log writes through a bounded background queue instead of doing file I/O while receiving a message.
+- GUI: settings now scroll instead of overlapping the Done button on small screens; HUD editor, Compatibility and Inventory Tools footer buttons reflow; unavailable rows are visibly greyed and explain themselves. The config screen caches its keybind warning instead of rescanning every frame.
 - Lifecycle/state: chat collapse and auto-reconnect reset on world join/leave; Fly Speed restores the previous flight speed; FPS Safety resets per world; blocked HUD elements cannot be re-enabled by resetting the layout.
 - Mixins: every hook has priority 1500, `require = 0`, a try/catch and a one-time failure path; all failures disable only the affected feature.
-- Rendering: crosshair uses the Fabric HUD registry; HUD/world markers stay on Fabric events under Sodium/Iris.
-- Keybinds: conflict detection is shown in the Compatibility report and as a warning on the config screen.
+- Rendering: crosshair uses the Fabric HUD registry and keeps every arm visible at the minimum size; container grids are capped at 27 stacks; HUD/world markers stay on Fabric events under Sodium/Iris.
+- Keybinds: conflict detection is shown in the Compatibility report and as a cached warning on the config screen; duplicated OmniCube-only warnings are removed.
 
 ## Testing status
 
