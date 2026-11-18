@@ -56,6 +56,10 @@ public final class ChatSearchScreen extends Screen {
 			if (line == null || line.isBlank()) {
 				continue;
 			}
+			var streamer = OmniCubeClient.streamer();
+			if (streamer != null && streamer.hideChat()) {
+				line = streamer.redactString(line);
+			}
 			if (needle.isEmpty() || line.toLowerCase(Locale.ROOT).contains(needle)) {
 				next.add(line);
 				if (next.size() >= 80) {

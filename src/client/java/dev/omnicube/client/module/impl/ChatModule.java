@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -64,6 +65,10 @@ public final class ChatModule extends Module {
 		if (message == null || message.isBlank()) {
 			OmniCubeText.sendError("No chat message has been received yet.");
 			return;
+		}
+		var streamer = OmniCubeClient.streamer();
+		if (streamer != null && streamer.hideChat()) {
+			message = streamer.redactString(message);
 		}
 		OmniCubeText.copyToClipboard(message);
 		OmniCubeText.send("Copied the last chat message.");

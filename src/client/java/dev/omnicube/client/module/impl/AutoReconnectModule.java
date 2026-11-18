@@ -20,6 +20,7 @@ public final class AutoReconnectModule extends Module {
 	private ServerData server;
 	private String address = "";
 	private boolean announced;
+	private boolean multiplayerSession;
 
 	public AutoReconnectModule() {
 		super("auto_reconnect", "Auto Reconnect", "Retries the last multiplayer server after an unexpected disconnect.", ModuleCategory.MISC, false);
@@ -27,10 +28,20 @@ public final class AutoReconnectModule extends Module {
 
 	public void rememberServer(Minecraft client) {
 		try {
-			if (client != null && !client.hasSingleplayerServer() && client.getCurrentServer() != null
-					&& client.getCurrentServer().ip != null && !client.getCurrentServer().ip.isBlank()) {
+			if (client == null) {
+				return;
+			}
+			if (client.hasSingleplayerServer() || client.getCurrentServer() == null) {
+				// Never carry a multiplayer target into a singleplayer session.
+				server = null;
+				address = "";
+				multiplayerSession = false;
+				return;
+			}
+			if (client.getCurrentServer().ip != null && !client.getCurrentServer().ip.isBlank()) {
 				server = client.getCurrentServer();
 				address = server.ip;
+				multiplayerSession = true;
 			}
 		} catch (Throwable ignored) {
 			// The next join will try again.
@@ -38,8 +49,8 @@ public final class AutoReconnectModule extends Module {
 	}
 
 	public void onDisconnect(Minecraft client) {
-		try {
-			if (!isEnabled() || client == null) {
+					try {
+			if (!isEnabled() || client == null || !multiplayerSession) {
 				return;
 			}
 			if (client.hasSingleplayerServer()) {
@@ -119,6 +130,7 @@ public final class AutoReconnectModule extends Module {
 		server = null;
 		address = "";
 		announced = false;
+		multiplayerSession = false;
 	}
 
 	@Override
