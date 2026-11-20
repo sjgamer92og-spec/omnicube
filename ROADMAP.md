@@ -1,5 +1,16 @@
 # OmniCube roadmap
 
+## Released — v0.2.2 (Minecraft 1.21.11)
+
+- PolyForm Shield License 1.0.0, with the required notice line and the identifier declared in
+  `fabric.mod.json`
+- Performance module reworked into a hardware-aware backend: one-time hardware tier, matching quality
+  preset, then a per-second quality ladder driven by hardware-aware minimum and comfort frame rates
+- New **Hardware tiers and presets** setting; safe fallback to the built-in backend on failure
+- Adaptive backend reported in the diagnostics feature table and performance section; Lithium added
+  to the performance compatibility list
+- README restructured with a complete feature list and this roadmap
+
 ## Released — v0.2.1 (Minecraft 1.21.11, bug-fix round)
 
 - Diagnostics log (`logs/omnicube-diagnostics.log`), Diagnostics tab and `/omnicube diag`
@@ -11,6 +22,7 @@
 ## Released — v0.2.0 (Minecraft 1.21.11)
 
 - HUD fixes and normalized layout persistence
+- Config migration from an earlier config file, with missing/empty/corrupt protection
 - Free look
 - Shulker/container tooltip preview (text + optional item grid)
 - Client-side name tags

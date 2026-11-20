@@ -8,7 +8,6 @@
 
 **Current release:** `0.2.2+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
-
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
 **v0.2.0 (expanded)** adds streamer mode, the crosshair customizer, chat search and spam collapse, auto-reconnect, conservative entity culling, compatibility auto-disable/UI/reporting, the Low-end preset, FPS safety and an opt-in `/omnicube perf` profiler.
@@ -19,7 +18,59 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 
 The name reflects the goal: one compact cube of client-side utilities covering many parts of the game. It is not affiliated with, endorsed by, or derived from Cactus Mod.
 
-## Feature highlights
+## Features
+
+Every feature is client-side, can be switched off, and needs no server-side mod. Hover any row in the config screen for its exact state and the reason it is off.
+
+### HUD
+- **20 draggable elements**: FPS and frame time, coordinates and chunk, biome and dimension, facing and yaw, server ping, movement speed, nearby entities, server address, memory use, session time, clock and in-game time, stopwatch, nearest TNT fuse, waypoint compass, potion effects, armor durability, experience, held-item durability, keystrokes and CPS.
+- **HUD editor** with drag-and-drop, right-click show/hide, fraction-based layout that survives resolution and GUI-scale changes, screen clamping and a master switch.
+
+### Visuals and camera
+- **Fullbright** — raises gamma to a configurable level and restores your exact original value.
+- **Zoom** — hold a key to narrow the field of view, with an adjustable factor.
+- **Free Look** — hold a key to look around without turning your player.
+- **Crosshair** — shape, colour, outline and size, drawn through Fabric's HUD registry.
+
+### Player
+- **Name Tags+** — client-side player tags with health and distance.
+- **Auto Sprint** — sprints while you hold forward, unless sneaking or using an item.
+- **Fly Speed** — sets creative flight speed and restores the previous value.
+- **Coordinates Copy** — copies your exact position and dimension to the clipboard.
+
+### World
+- **Waypoints** — save, list, set and remove points, with a compass HUD element and an optional death marker.
+- **World Markers** — TNT fuse labels and a beacon beam at the active waypoint.
+- **Entity Culling** — skips entities fully hidden behind solid blocks; capped, cached and conservative.
+
+### Chat
+- **Better Chat** — timestamps and copy-the-last-message.
+- **Chat Spam Collapse** — folds repeated lines into `message (2)`, `message (3)`, …
+- **Chat Log** — writes received chat and server messages to `logs/omnicube-chat.log` through a bounded background queue.
+- **Chat Search** — searchable in-game history screen.
+
+### Items and inventory
+- **Better Tooltips** — shulker and container previews, durability, food values and optional item IDs.
+- **Inventory Tools** — search your inventory and quick-move the selected stack with vanilla shift-click.
+- **NBT Viewer** — prints the components of the held item.
+
+### Performance
+- **Hardware-aware adaptive quality** — one-time hardware tier, matching quality preset, then a per-second quality ladder driven by minimum and comfort frame rates. Vanilla options only, always restored.
+- **FPS Safety** — optional guard that sheds heavy features after a sustained drop and tells you what changed.
+- **Low-end preset** — one command that switches on the lean configuration.
+- **Callback profiler** — `/omnicube perf` for per-feature client callback timings.
+
+### Privacy
+- **Streamer Mode** — redacts coordinates, server addresses and IPv4 addresses in the HUD, chat and the diagnostics log.
+
+### Configuration, diagnostics and compatibility
+- **Config screen** with Features, HUD, Diagnostics and Compatibility tabs, scrolling lists and per-row explanations.
+- **Diagnostics log** — nine-section report in `logs/omnicube-diagnostics.log`, previous run kept, written off the render thread, plus `/omnicube diag` and a Copy-report button.
+- **Startup self-check** — verifies every feature, keybind, screen, HUD hook and mixin, logs failures and warns once in chat.
+- **Compatibility registry** — detects overlapping mods, disables only the duplicated feature, shows the exact reason and never runs both.
+- **Commands and keybinds** — `/omnicube …` for config, HUD, waypoints, macros, timer and tools, with conflict detection against vanilla and other mods.
+
+## Feature details
 
 ### HUD (draggable, toggleable)
 
@@ -145,7 +196,7 @@ OmniCube checks `FabricLoader.isModLoaded()` at startup. The complete table live
 | Chat Patches, Chat Plus | Better Chat, Chat Spam Collapse |
 | Auto Reconnect | Auto Reconnect |
 | Entity Culling | Entity Culling |
-| Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine | Performance |
+| Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine, Lithium | Performance |
 
 Rules are intentionally narrow: a mod is listed only for the feature it really provides. AppleSkin (food values), Jade (block/entity info), Chat Heads (chat avatars), Iris, FerriteCore, ImmediatelyFast, ModernFix and Indium do **not** provide the OmniCube features they were previously matched with, so they no longer disable anything. Lithium is the one exception: it already owns chunk and simulation ticking, so it does disable the Performance module, with that reason shown.
 
@@ -155,7 +206,7 @@ When a feature is provided elsewhere:
 - Enabling it from the config screen, HUD editor or command shows exactly: `This feature is already provided by <ModName>. Remove that mod first to enable it in OmniCube.`
 - Both versions never run together. The previous enabled state is preserved while the mod is present, so removing that mod can restore it.
 - The startup log lists every detected overlapping mod, every disabled feature and the reason. The **Compat** button on the config screen (and `/omnicube compat`) shows the same report.
-- The Performance module is fully disabled when Sodium/Sodium Extra/VulkanMod/Embeddium/Rubidium/Dynamic FPS/OptiFine is present, so it never changes video settings another mod is managing.
+- The Performance module is fully disabled when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine or Lithium is present, so it never changes video settings another mod is managing.
 
 HUD and world rendering use Fabric's HUD/world render events rather than vanilla renderer internals, so Sodium/Iris do not remove the HUD, crosshair or world markers.
 
@@ -263,6 +314,7 @@ logged as `FAILED` and announced once in chat as
 
 ## Audit fixes in v0.2.0
 
+- Config: missing, empty and corrupt config paths now fail safely, back up damaged files and preserve valid settings from an earlier config file. Atomic saves are unchanged.
 - Chat: removed the double-logging path when timestamps cancel and re-add a message; logs are now written once. Chat history has a 200-message cap and the search screen has responsive footer buttons. Chat Log writes through a bounded background queue instead of doing file I/O while receiving a message.
 - GUI: settings now scroll instead of overlapping the Done button on small screens; HUD editor, Compatibility and Inventory Tools footer buttons reflow; unavailable rows are visibly greyed and explain themselves. The config screen caches its keybind warning instead of rescanning every frame.
 - Lifecycle/state: chat collapse and auto-reconnect reset on world join/leave; Fly Speed restores the previous flight speed; FPS Safety resets per world; blocked HUD elements cannot be re-enabled by resetting the layout.
@@ -312,19 +364,39 @@ Other fixes in this round:
 - Real in-game visual, multiplayer and third-party-mod tests cannot run in this headless cloud workspace (no Minecraft display/client). The Fabric-API-only, Sodium+Lithium+Iris+ModMenu and HUD/tooltip mod combinations are therefore **not runtime-tested here**; test them in a normal client before publishing a binary to other users. The diagnostics log and self-check compile and are packaged, but their runtime output has not been observed on a real client in this environment.
 - `./gradlew clean build` success verifies compilation, mixin remapping and packaging only. It does not verify rendering or gameplay.
 
-## What is not in v0.2.1 (roadmap)
+## Roadmap
 
-OmniCube is an independent reimplementation of the "all-in-one toolkit" idea, not a copy of Cactus Mod (which is **All Rights Reserved**; no code or assets were taken from it). The following remain planned but are not implemented yet:
+Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.md).
 
-- True server-side inventory sorting (v0.2.1 ships a view-only sort; see the inventory note above)
-- Fluid markers, BUD-switch highlighting and more world-space overlays
-- Auto repeater, auto top, auto craft
-- Inventory tabs and anti-force-pack
-- Account switcher, local server hosting, content packs and userscripts
-- NBT editor and armor-stand editor
-- Discord RPC, capes and cosmetics
+### Released
 
-Sound control, Thumbnail Studio/pose/dummy-player features, minimap, replay, shaders and cosmetics are intentionally **not** included. Those require deeper renderer, auth or server-interaction hooks; they will be added carefully once the 1.21.11 base is proven. Cactus Mod is All Rights Reserved and is never used as a source.
+| Version | Highlights |
+| --- | --- |
+| 0.1.0 | First release: configurable HUD, core modules, waypoints, macros, tooltips |
+| 0.2.0 | Free look, name tags, chat tools, streamer mode, crosshair, auto-reconnect, entity culling, compatibility registry, low-end preset, FPS Safety |
+| 0.2.1 | Bug-fix round: startup isolation, list clipping, compatibility rules, FPS Safety defaults; diagnostics log, in-game Diagnostics tab, `/omnicube diag`, startup self-check |
+| 0.2.2 | PolyForm Shield licence; hardware-tier presets and adaptive scaling in the Performance module |
+
+### Next — 0.3.x candidates
+
+- **True server-safe inventory sorting** — click simulation, container-size and anti-cheat review first.
+- **More world overlays** — fluids, BUD switches, spawn-proofing.
+- **Config and migration tests** — automated checks for damaged, partial and legacy config files.
+- **Diagnostics polish** — sharper performance attribution and per-feature frame-cost history.
+
+### Out of scope
+
+OmniCube is an independent toolkit, not a copy of Cactus Mod (which is **All Rights Reserved**; no code or assets were taken from it). These stay out until there is a safe, maintainable Fabric 1.21.11 design:
+
+- Sound control
+- Thumbnail Studio, pose tools or dummy-player features
+- Minimap
+- Local server hosting
+- Replay system
+- Shaders
+- Cosmetics or capes
+- Account switcher, content packs and userscripts
+- Discord RPC
 
 ## Performance backend
 

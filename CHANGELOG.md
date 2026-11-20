@@ -88,8 +88,10 @@ No new features. Everything below fixes behaviour that was broken or misleading 
 - Streamer Mode, crosshair customizer, chat search and spam collapse, auto-reconnect, conservative
   entity culling, compatibility registry with auto-disable, Low-end preset, FPS safety, opt-in
   `/omnicube perf` profiler.
+- HUD fixes, normalized layout persistence, config migration from an earlier config file, free look, container
   tooltip preview, client-side name tags, chat timestamps/copy/search, world markers, inventory tools,
   waypoints and macros.
 
 ## 0.1.0 — first release
 
+- Initial OmniCube client toolkit for Minecraft 1.21.11.

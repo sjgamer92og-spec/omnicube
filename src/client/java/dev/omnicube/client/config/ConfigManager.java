@@ -2,6 +2,7 @@ package dev.omnicube.client.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.hud.HudManager;
@@ -11,6 +12,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -25,10 +27,6 @@ public final class ConfigManager {
 	private static final String CONFIG_FILE = "omnicube.json";
 	private static final String TEMP_FILE = "omnicube.json.tmp";
 
-	/**
-	 * Pre-rename config filename. This is the only old name kept in code because
-	 * it is required to find and migrate an existing config exactly once.
-	 */
 	private static final String LEGACY_BACKUP_SUFFIX = ".pre-omnicube.bak";
 
 	private static volatile String loadSummary = "config load has not run yet";
@@ -69,8 +67,7 @@ public final class ConfigManager {
 			backupCorruptFile(path);
 			OmniCubeConfig recovered = loadLegacy(path);
 			if (recovered != null) {
-				record(path.getFileName() + " was unreadable; recovered settings from "
-						+ LEGACY_CONFIG_FILE, true);
+									record(path.getFileName() + " was unreadable; recovered settings from an earlier config", true);
 				return recovered;
 			}
 			record(path.getFileName() + " was unreadable; backed up and reset to defaults", true);
@@ -79,7 +76,7 @@ public final class ConfigManager {
 
 		OmniCubeConfig migrated = loadLegacy(path);
 		if (migrated != null) {
-			record("migrated " + LEGACY_CONFIG_FILE + " to " + CONFIG_FILE, false);
+			record("migrated an earlier config to " + CONFIG_FILE, false);
 			return migrated;
 		}
 		record("no config found; created defaults", true);
@@ -94,18 +91,52 @@ public final class ConfigManager {
 	}
 
 	private static OmniCubeConfig loadLegacy(Path target) {
-		Path legacy = target.resolveSibling(LEGACY_CONFIG_FILE);
-		if (!Files.exists(legacy)) {
+		Path legacy = findLegacyConfig(target);
+		if (legacy == null) {
 			return null;
 		}
 		OmniCubeConfig migrated = read(legacy);
 		if (migrated == null) {
 			backupCorruptFile(legacy);
-			record(LEGACY_CONFIG_FILE + " was unreadable; backed up and defaults used", true);
+			record(legacy.getFileName() + " was unreadable; backed up and defaults used", true);
 			return null;
 		}
 		migrateLegacy(legacy, target, migrated);
 		return migrated;
+	}
+
+	/**
+	 * Finds a config written by an older build under a different file name. The file
+	 * is recognised by its shape rather than its name, so a rename never strands a
+	 * player's settings, and no obsolete file name has to live in the source.
+	 */
+	private static Path findLegacyConfig(Path target) {
+		Path directory = target.getParent();
+		if (directory == null || !Files.isDirectory(directory)) {
+			return null;
+		}
+		try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, "*.json")) {
+			for (Path candidate : stream) {
+				if (Files.isRegularFile(candidate) && !candidate.equals(target)
+						&& looksLikeOmniCubeConfig(candidate)) {
+					return candidate;
+				}
+			}
+		} catch (Throwable throwable) {
+			Diagnostics.exception("config.legacy.scan", throwable);
+		}
+		return null;
+	}
+
+	private static boolean looksLikeOmniCubeConfig(Path path) {
+		try (BufferedReader reader = Files.newBufferedReader(path)) {
+			JsonObject root = GSON.fromJson(reader, JsonObject.class);
+			return root != null && root.has("modules") && root.get("modules").isJsonObject()
+					&& root.has("hud") && root.get("hud").isJsonObject();
+		} catch (Throwable throwable) {
+			// Not a config; a malformed file must not stop the search.
+			return false;
+		}
 	}
 
 	private static OmniCubeConfig read(Path path) {
@@ -125,7 +156,7 @@ public final class ConfigManager {
 	}
 
 	private static void migrateLegacy(Path legacy, Path target, OmniCubeConfig config) {
-		Path backup = legacy.resolveSibling(LEGACY_CONFIG_FILE + LEGACY_BACKUP_SUFFIX);
+		Path backup = legacy.resolveSibling(legacy.getFileName() + LEGACY_BACKUP_SUFFIX);
 
 		try {
 			Files.copy(legacy, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
