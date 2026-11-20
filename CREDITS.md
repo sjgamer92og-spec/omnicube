@@ -29,7 +29,7 @@ The compatibility table is a list of loader IDs and display names. No third-part
 - Chat: Chat Heads, Chat Patches, Chat Plus
 - Reconnect: Auto Reconnect
 - Culling: Entity Culling
-- Performance: Sodium, Lithium, FerriteCore, ImmediatelyFast, Iris, Indium, ModernFix, Dynamic FPS, Embeddium, Rubidium
+- Performance: Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine, Lithium
 
 These lists are loader-ID hypotheses, not bundled dependencies. A mod is only disabled when Fabric Loader reports its ID; no optional class is required. See `CompatRegistry.java` for the single source of truth.
 
@@ -50,9 +50,9 @@ The Minecraft/Fabric dependencies are not redistributed in source form. The buil
 
 ## Performance backend
 
-The adaptive performance code in `dev.omnicube.client.optimization` — the `OptimizationBackend` contract and `BuiltinOptimizationBackend` — is original OmniCube work written against the public Minecraft `Options` API, and is released under this repository's PolyForm Shield License 1.0.0 like the rest of the mod. It contains no third-party code.
+The adaptive performance code in `dev.omnicube.client.optimization` — the `OptimizationBackend` contract, `BuiltinOptimizationBackend`, `AdaptiveOptimizationBackend`, `QualityPolicy`, `QualityPreset`, `HardwareProfile`, `HardwareTier` and `HardwareProbe` — is original work by **sjgamer92og**, written for OmniCube and released under this repository's PolyForm Shield License 1.0.0 like the rest of the mod. No third-party code is present.
 
-The Performance module disables itself automatically when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS or OptiFine is installed, because those mods own the same video settings.
+The Performance module disables itself automatically when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine or Lithium is installed, because those mods own the same work.
 
 ## License headers
 

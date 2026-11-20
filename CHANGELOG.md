@@ -10,6 +10,15 @@ No new features.
   `Required Notice: Copyright (c) 2026 sjgamer92og (OmniCube)`.
 - `fabric.mod.json` now declares `PolyForm-Shield-1.0.0`; README, CREDITS and this changelog describe the
   new terms. Third-party components keep their own licenses (see `CREDITS.md`).
+- **The Performance module now has a hardware-aware backend.** It probes the machine once
+  (`HardwareProbe`), classifies it into a `HardwareTier`, applies a matching `QualityPreset` and
+  then steps quality with a `QualityPolicy` state machine that uses hardware-aware minimum and
+  comfort frame rates instead of one fixed target. New setting: **Hardware tiers and presets**
+  (on by default, config screen). Only vanilla video options are changed, every original value is
+  restored on disable, toggle-off and quit, and any failure restores the settings and falls back to
+  the built-in backend. The backend appears in the diagnostics feature table and in the
+  performance section of the log, and it is disabled automatically when Sodium, Sodium Extra,
+  VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine or Lithium is present.
 
 ## 0.2.1 — bug-fix round (Minecraft 1.21.11)
 

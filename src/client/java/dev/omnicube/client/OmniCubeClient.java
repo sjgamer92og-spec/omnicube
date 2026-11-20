@@ -284,6 +284,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 				try {
 					if (performanceModule != null && performanceModule.isEnabled()) {
 						performanceModule.captureForSession();
+						performanceModule.onWorldJoin();
 					}
 					if (chatCollapseModule != null) {
 						chatCollapseModule.reset();
@@ -332,6 +333,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 			modules.recordAllStates();
 			hud.recordAllStates();
 			Diagnostics.performanceLine("frame costs are measured in-game with /omnicube perf");
+			Diagnostics.performanceLine("performance backend: " + PerformanceModule.backendId()
+					+ (PerformanceModule.backendUsingFallback() ? " (fell back to built-in)" : ""));
 			Diagnostics.performanceLine("FPS safety: " + (fpsSafetyModule != null && fpsSafetyModule.isEnabled()
 					? "armed at floor " + fpsSafetyModule.floor() + " FPS after 5s below it"
 					: "disabled"));

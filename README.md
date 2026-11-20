@@ -147,7 +147,7 @@ OmniCube checks `FabricLoader.isModLoaded()` at startup. The complete table live
 | Entity Culling | Entity Culling |
 | Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine | Performance |
 
-Rules are intentionally narrow: a mod is listed only for the feature it really provides. AppleSkin (food values), Jade (block/entity info), Chat Heads (chat avatars), Iris, Lithium, FerriteCore, ImmediatelyFast, ModernFix and Indium do **not** provide the OmniCube features they were previously matched with, so they no longer disable anything.
+Rules are intentionally narrow: a mod is listed only for the feature it really provides. AppleSkin (food values), Jade (block/entity info), Chat Heads (chat avatars), Iris, FerriteCore, ImmediatelyFast, ModernFix and Indium do **not** provide the OmniCube features they were previously matched with, so they no longer disable anything. Lithium is the one exception: it already owns chunk and simulation ticking, so it does disable the Performance module, with that reason shown.
 
 When a feature is provided elsewhere:
 
@@ -328,7 +328,12 @@ Sound control, Thumbnail Studio/pose/dummy-player features, minimap, replay, sha
 
 ## Performance backend
 
-The Performance module adapts vanilla video settings (render distance, particles, clouds, entity distance) to your frame rate and puts every original value back when you disable it or quit. It only turns the same knobs the video settings screen does, so it never fights a renderer mod, and it disables itself entirely when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS or OptiFine is installed.
+The Performance module is hardware-aware. It works in two layers, both toggleable in the config screen:
+
+1. **Hardware tiers and presets.** On the first run it classifies the machine (heap, device RAM, CPU threads, renderer family — including GL4ES, ANGLE, VirGL, software and mobile GPUs) and applies a matching preset once: *Minimum*, *Low*, *Balanced* or *Quality*. A preset only ever lowers a value; it never raises render or simulation distance above what you already had. Turning **Hardware tiers and presets** off skips this layer entirely.
+2. **Adaptive scaling.** Once per second it compares your frame rate against a minimum (30 FPS on very low/low hardware, 45 on mid, 60 on high) and a comfort level 1.25x above it, then steps a 0.35 → 1.00 quality ladder up or down with hysteresis, cooldowns and a 10-second settle window after a world join. It never changes a value the preset did not already own, and it does nothing while a screen is open or a world is loading.
+
+Only vanilla video options are touched (render distance, simulation distance, particles, clouds, entity distance, biome blend), so nothing fights a renderer mod; every original value is captured first and restored when you disable the module, switch the toggle off, or quit. If the adaptive path ever throws, it restores your settings and hands the session to the conservative built-in backend instead of failing the module. The module disables itself entirely when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS, OptiFine or Lithium is installed.
 
 ## License
 

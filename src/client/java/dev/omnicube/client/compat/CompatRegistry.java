@@ -80,7 +80,10 @@ public final class CompatRegistry {
 			rule("embeddium", "Embeddium", "performance"),
 			rule("rubidium", "Rubidium", "performance"),
 			rule("dynamic_fps", "Dynamic FPS", "performance"),
-			rule("optifine", "OptiFine", "performance")
+			rule("optifine", "OptiFine", "performance"),
+			// Lithium already owns chunk/simulation ticking; running both would
+			// double the tuning without adding a frame.
+			rule("lithium", "Lithium", "performance")
 	);
 
 	private static final List<DetectedMod> DETECTED = new ArrayList<>();
