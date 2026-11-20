@@ -13,6 +13,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.item.ItemStack;
@@ -355,37 +356,67 @@ public final class HudElements {
 		}
 
 		private long lastScan;
-		private PrimedTnt nearest;
-		private double nearestDistance = Double.MAX_VALUE;
+		/** Snapshot values only: holding an entity reference across frames is not safe. */
+		private int fuse = -1;
+		private double distance = -1.0D;
 
 		@Override
 		public List<String> lines(Minecraft client) {
-			LocalPlayer player = client.player;
-			if (player == null || client.level == null) {
-				return fallback();
+			try {
+				LocalPlayer player = client.player;
+				if (player == null || client.level == null) {
+					return fallback();
+				}
+				long now = System.currentTimeMillis();
+				if (now - lastScan >= 250L) {
+					lastScan = now;
+					scan(client, player);
+				}
+				if (fuse < 0) {
+					return List.of("TNT  none nearby");
+				}
+				return List.of(String.format(Locale.ROOT, "TNT  %.1fs", fuse / 20.0D),
+						String.format(Locale.ROOT, "%.0f blocks away", Math.sqrt(distance)));
+			} catch (Throwable throwable) {
+				// Lighting TNT must never be able to take the frame down with it.
+				Diagnostics.exception("hud_tnt.scan", throwable);
+				fuse = -1;
+				distance = -1.0D;
+				return List.of("TNT  unavailable");
 			}
-			long now = System.currentTimeMillis();
-			if (nearest == null || nearest.isRemoved() || now - lastScan >= 250L) {
-				lastScan = now;
-				nearest = null;
-				nearestDistance = Double.MAX_VALUE;
-				for (var entity : client.level.entitiesForRendering()) {
-					if (!(entity instanceof PrimedTnt tnt)) {
+		}
+
+		private void scan(Minecraft client, LocalPlayer player) {
+			fuse = -1;
+			distance = -1.0D;
+			double nearest = Double.MAX_VALUE;
+			List<Entity> entities = new ArrayList<>();
+			try {
+				// Copy first: the live entity list can change while it is being iterated.
+				for (Entity entity : client.level.entitiesForRendering()) {
+					entities.add(entity);
+				}
+			} catch (Throwable throwable) {
+				Diagnostics.exception("hud_tnt.list", throwable);
+				return;
+			}
+			for (var entity : entities) {
+				try {
+					if (!(entity instanceof PrimedTnt tnt) || tnt.isRemoved()) {
 						continue;
 					}
-					double distance = tnt.distanceToSqr(player.getX(), player.getY(), player.getZ());
-					if (distance < nearestDistance) {
-						nearestDistance = distance;
-						nearest = tnt;
+					double squared = tnt.distanceToSqr(player.getX(), player.getY(), player.getZ());
+					int remaining = tnt.getFuse();
+					if (squared < nearest) {
+						nearest = squared;
+						fuse = Math.max(0, remaining);
+						distance = squared;
 					}
+				} catch (Throwable throwable) {
+					// A single entity being removed mid-scan must not break the element.
+					Diagnostics.exception("hud_tnt.entity", throwable);
 				}
 			}
-			if (nearest == null) {
-				return List.of("TNT  none nearby");
-			}
-			double seconds = Math.max(0.0D, nearest.getFuse()) / 20.0D;
-			return List.of(String.format(Locale.ROOT, "TNT  %.1fs", seconds),
-					String.format(Locale.ROOT, "%.0f blocks away", Math.sqrt(nearestDistance)));
 		}
 	}
 
@@ -466,8 +497,9 @@ public final class HudElements {
 				lines.add("  " + name + "  " + OmniCubeText.formatDuration(seconds * 1000L));
 				shown++;
 			}
+			// No effects means no panel at all, instead of a permanent "none" row.
 			if (lines.isEmpty()) {
-				return List.of("Effects  none");
+				return List.of();
 			}
 			lines.add(0, "Effects");
 			return lines;
@@ -475,39 +507,94 @@ public final class HudElements {
 	}
 
 	private static final class ArmorHud extends HudElement {
+		private static final List<String> PIECE_WORDS = List.of("Helmet", "Chestplate", "Leggings",
+				"Boots", "Cap", "Tunic", "Pants", "Trousers");
+
 		private ArmorHud() {
-			super("hud_armor", "Armor", "Durability of each equipped armor piece.", 0.79D, 0.51D);
+			super("hud_armor", "Armor", "Each worn armor piece with its remaining durability.", 0.79D, 0.51D);
 		}
 
 		@Override
 		public List<String> lines(Minecraft client) {
 			LocalPlayer player = client.player;
 			if (player == null) {
-				return fallback();
+				return List.of();
 			}
 			List<String> lines = new ArrayList<>();
-			lines.add("Armor");
-			addPiece(lines, "Head", player.getItemBySlot(EquipmentSlot.HEAD));
-			addPiece(lines, "Body", player.getItemBySlot(EquipmentSlot.CHEST));
-			addPiece(lines, "Legs", player.getItemBySlot(EquipmentSlot.LEGS));
-			addPiece(lines, "Feet", player.getItemBySlot(EquipmentSlot.FEET));
-			if (lines.size() == 1) {
-				lines.add("  none");
+			addPiece(lines, player.getItemBySlot(EquipmentSlot.HEAD));
+			addPiece(lines, player.getItemBySlot(EquipmentSlot.CHEST));
+			addPiece(lines, player.getItemBySlot(EquipmentSlot.LEGS));
+			addPiece(lines, player.getItemBySlot(EquipmentSlot.FEET));
+			// No armor means no panel at all instead of an empty "none" row.
+			if (lines.isEmpty()) {
+				return List.of();
 			}
+			lines.add(0, "Armor");
 			return lines;
 		}
 
-		private void addPiece(List<String> lines, String slot, ItemStack stack) {
+		private void addPiece(List<String> lines, ItemStack stack) {
 			if (stack == null || stack.isEmpty()) {
 				return;
 			}
-			if (!stack.isDamageableItem()) {
-				lines.add("  " + slot + "  " + stack.getHoverName().getString());
+			String name = shortName(stack.getHoverName().getString());
+			if (!stack.isDamageableItem() || stack.getMaxDamage() <= 0) {
+				lines.add("  " + name);
 				return;
 			}
 			int remaining = Math.max(0, stack.getMaxDamage() - stack.getDamageValue());
-			int percent = stack.getMaxDamage() <= 0 ? 0 : (int) Math.round(remaining * 100.0D / stack.getMaxDamage());
-			lines.add("  " + slot + "  " + percent + "%");
+			int percent = (int) Math.round(remaining * 100.0D / stack.getMaxDamage());
+			lines.add("  " + name + "  " + percent + "%");
+		}
+
+		/** "Iron Chestplate" reads as "Iron", keeping the material and dropping the slot. */
+		private static String shortName(String name) {
+			for (String word : PIECE_WORDS) {
+				if (name.endsWith(" " + word)) {
+					return name.substring(0, name.length() - word.length() - 1);
+				}
+			}
+			return name;
+		}
+
+		@Override
+		protected int lineColor(int index, String line) {
+			int percent = percentageOf(line);
+			if (percent < 0) {
+				return super.lineColor(index, line);
+			}
+			if (percent >= 90) {
+				return 0xFF5BD26B;
+			}
+			if (percent <= 20) {
+				return 0xFFD34A4A;
+			}
+			if (percent <= 45) {
+				return 0xFFD9A03C;
+			}
+			return 0xFFE6E6E6;
+		}
+
+		private static int percentageOf(String line) {
+			if (line == null) {
+				return -1;
+			}
+			int percent = line.lastIndexOf('%');
+			if (percent < 0) {
+				return -1;
+			}
+			int start = percent;
+			while (start > 0 && Character.isDigit(line.charAt(start - 1))) {
+				start--;
+			}
+			if (start == percent) {
+				return -1;
+			}
+			try {
+				return Integer.parseInt(line.substring(start, percent));
+			} catch (NumberFormatException exception) {
+				return -1;
+			}
 		}
 	}
 

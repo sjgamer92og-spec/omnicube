@@ -7,7 +7,9 @@
 		"CameraMixin",
 		"MouseHandlerMixin",
 		"ItemStackMixin",
-		"LivingEntityRendererMixin"
+		"LivingEntityRendererMixin",
+		"GameRendererMixin",
+		"LoadingOverlayMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

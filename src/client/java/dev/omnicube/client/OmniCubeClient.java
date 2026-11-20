@@ -34,6 +34,7 @@ import dev.omnicube.client.module.impl.MacroModule;
 import dev.omnicube.client.module.impl.MarkerModule;
 import dev.omnicube.client.module.impl.NameTagModule;
 import dev.omnicube.client.module.impl.PerformanceModule;
+import dev.omnicube.client.module.impl.SplashModule;
 import dev.omnicube.client.module.impl.StreamerModule;
 import dev.omnicube.client.module.impl.TooltipModule;
 import dev.omnicube.client.module.impl.WaypointModule;
@@ -69,6 +70,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static HudModule hudModule;
 	private static FullbrightModule fullbrightModule;
 	private static ZoomModule zoomModule;
+	private static SplashModule splashModule;
 	private static WaypointModule waypointModule;
 	private static MacroModule macroModule;
 	private static CoordinatesModule coordinatesModule;
@@ -107,6 +109,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 		safe("registry.modules", () -> {
 			fullbrightModule = register(new FullbrightModule());
 			zoomModule = register(new ZoomModule());
+			splashModule = register(new SplashModule());
 			freeLookModule = register(new FreeLookModule());
 			register(new dev.omnicube.client.module.impl.AutoSprintModule());
 			register(new dev.omnicube.client.module.impl.FlySpeedModule());
@@ -774,6 +777,14 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static FreeLookModule freeLook() {
 		return freeLookModule;
+	}
+
+	public static ZoomModule zoom() {
+		return zoomModule;
+	}
+
+	public static SplashModule splash() {
+		return splashModule;
 	}
 
 	public static TooltipModule tooltips() {

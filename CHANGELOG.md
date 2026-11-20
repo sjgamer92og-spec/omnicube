@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.3 — comfort and polish (Minecraft 1.21.11)
+
+- **Free Look behaves like a head turn, not an orbit.** The camera stays in first person, the yaw is
+  clamped to a configurable arc (110° by default, 30–180°) instead of spinning a full 360°, and the
+  view eases back to your aim when the key is released instead of snapping. Mouse scaling now follows
+  your sensitivity and invert options, so it feels the same as normal looking. Settings: **Yaw range**,
+  **Sensitivity**, **Smooth return**, **Stay in first person**.
+- **Zoom is smooth.** The field of view is interpolated for every rendered frame from the game's FOV
+  calculation, with adjustable **Zoom factor**, **Smooth animation** and **Animation time**. Your saved
+  FOV option is never written, so disabling the module or leaving the world cannot change your settings.
+- **Custom Splash.** A new module replaces the Mojang studios loading screen with an OmniCube screen:
+  dark gradient, wordmark, version, loading progress bar and a key hint. It hands the screen back to
+  vanilla as soon as the overlay starts fading out. Settings: **Show loading progress**, **Show key hints**.
+- **Fullbright now really removes darkness.** The default brightness is 16 (the maximum), which the
+  lightmap applies on top of night and cave light instead of merely softening it.
+- **Armor HUD shows what you wear.** Each piece is named by material ("Iron", "Diamond", "Leather")
+  with its remaining durability, coloured green at 90 %+, amber at 45 % or less and a normal red at
+  20 % or less. With no armor equipped the panel is hidden entirely, and the potion panel disappears
+  when you have no active effects.
+- **TNT fuse crash fixed.** Lighting TNT while the TNT Fuse element was on could take the frame down:
+  the element cached a live entity across frames and iterated the live entity list. It now copies the
+  list, guards each entity and stores only the fuse and distance, so a removed or exploding TNT can no
+  longer crash the HUD.
+- **Startup self-check no longer reports working mixins as failed.** Mixin renames handler methods at
+  runtime, so the exact-name reflection check marked every applied mixin as "NOT APPLIED". The check
+  now matches the renamed handler, so the diagnostics log reports the real state of free look, zoom,
+  tooltips, name tags, entity culling and chat collapse.
+
 ## 0.2.2 — license change (Minecraft 1.21.11)
 
 No new features.

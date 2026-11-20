@@ -35,7 +35,7 @@ public final class SelfCheck {
 			"fullbright", "zoom", "free_look", "auto_sprint", "fly_speed", "chat_log", "tooltips",
 			"waypoints", "macros", "coordinates", "performance", "hud", "better_chat", "chat_collapse",
 			"streamer_mode", "crosshair", "auto_reconnect", "entity_culling", "fps_safety", "name_tags",
-			"world_markers", "inventory_tools"
+			"world_markers", "inventory_tools", "splash"
 	};
 
 	private static final String[] REQUIRED_HUD = {
@@ -149,17 +149,22 @@ public final class SelfCheck {
 		checkMixin("ItemStackMixin", ItemStack.class, "omnicube$containerPreview");
 		checkMixin("LivingEntityRendererMixin", LivingEntityRenderer.class, "omnicube$hideVanillaPlayerNameTag");
 		checkMixin("EntityRenderDispatcherMixin", EntityRenderDispatcher.class, "omnicube$cullHiddenMob");
+		checkMixin("GameRendererMixin", net.minecraft.client.renderer.GameRenderer.class, "omnicube$applyZoom");
+		checkMixin("LoadingOverlayMixin", net.minecraft.client.gui.screens.LoadingOverlay.class, "omnicube$drawSplash");
 	}
 
 	/**
-	 * A mixin merges its handler into the target class, so the presence of the handler
-	 * method on the target is direct proof that the injection was applied.
+	 * A mixin merges its handler into the target class. Mixin renames handler methods
+	 * to {@code handler$<id>$...$<handler>} to keep obfuscated names unique, so the
+	 * handler name is matched as a suffix of the merged method instead of an exact
+	 * name; an exact match reported every working mixin as missing.
 	 */
 	private static void checkMixin(String name, Class<?> target, String handler) {
 		boolean applied = false;
 		try {
 			for (Method method : target.getDeclaredMethods()) {
-				if (method.getName().equals(handler)) {
+				String methodName = method.getName();
+				if (methodName.equals(handler) || methodName.endsWith(handler) || methodName.endsWith("$" + handler)) {
 					applied = true;
 					break;
 				}

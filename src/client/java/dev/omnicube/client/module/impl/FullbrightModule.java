@@ -7,11 +7,13 @@ import dev.omnicube.client.setting.Setting;
 import net.minecraft.client.Minecraft;
 
 public final class FullbrightModule extends Module {
-	private final Setting.Num brightness = add(new Setting.Num("brightness", "Brightness", 5.0D, 1.0D, 16.0D, 0.5D));
+	// The lightmap uses gamma without clamping it to the slider range, so a high
+	// value lifts night and cave darkness instead of only softening it.
+	private final Setting.Num brightness = add(new Setting.Num("brightness", "Brightness", 16.0D, 1.0D, 16.0D, 0.5D));
 	private Double originalGamma;
 
 	public FullbrightModule() {
-		super("fullbright", "Fullbright", "Lights up the world by raising the gamma option while enabled.", ModuleCategory.RENDER, false);
+		super("fullbright", "Fullbright", "Removes night and cave darkness by raising the gamma option while enabled.", ModuleCategory.RENDER, false);
 	}
 
 	@Override

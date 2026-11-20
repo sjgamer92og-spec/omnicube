@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.2+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.3+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
@@ -16,6 +16,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 
 **v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
 
+**v0.2.3 is the comfort and polish round.** Free Look is limited to a configurable arc, stays in first person and eases back when released; Zoom animates per frame; the Mojang loading screen is replaced by a branded OmniCube splash; Fullbright fully removes night and cave darkness; the armor HUD shows the material you wear with green/amber/red durability; empty armor and potion panels hide themselves; and the TNT fuse element can no longer crash the game.
+
 The name reflects the goal: one compact cube of client-side utilities covering many parts of the game. It is not affiliated with, endorsed by, or derived from Cactus Mod.
 
 ## Features
@@ -24,12 +26,14 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 
 ### HUD
 - **20 draggable elements**: FPS and frame time, coordinates and chunk, biome and dimension, facing and yaw, server ping, movement speed, nearby entities, server address, memory use, session time, clock and in-game time, stopwatch, nearest TNT fuse, waypoint compass, potion effects, armor durability, experience, held-item durability, keystrokes and CPS.
+- **Armor, potion and durability panels that show only what exists** — the armor element names each worn piece ("Iron 100%") and colours durability green, amber or red; with no armor, or no active potion, the panel disappears instead of showing "none".
 - **HUD editor** with drag-and-drop, right-click show/hide, fraction-based layout that survives resolution and GUI-scale changes, screen clamping and a master switch.
 
 ### Visuals and camera
-- **Fullbright** — raises gamma to a configurable level and restores your exact original value.
-- **Zoom** — hold a key to narrow the field of view, with an adjustable factor.
-- **Free Look** — hold a key to look around without turning your player.
+- **Fullbright** — removes night and cave darkness (gamma 16 by default) and restores your exact original value.
+- **Zoom** — hold a key to narrow the field of view with a smooth, adjustable animation; your saved FOV is never changed.
+- **Free Look** — hold a key to look around within a configurable arc (110° by default) without turning your player; it stays in first person and eases back when released.
+- **Custom Splash** — replaces the Mojang studios loading screen with handled rectangles, a progress bar, key hints and the OmniCube wordmark.
 - **Crosshair** — shape, colour, outline and size, drawn through Fabric's HUD registry.
 
 ### Player
@@ -368,6 +372,8 @@ Other fixes in this round:
 
 Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.md).
 
+**Versioning:** every release bumps only the last number (`0.2.2` → `0.2.3`), and the middle number stays fixed for the whole 0.2 series. The finished product ships as `1.0.0` and moves on with `1.0.1`, `1.1.0` and so on.
+
 ### Released
 
 | Version | Highlights |
@@ -376,8 +382,9 @@ Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.
 | 0.2.0 | Free look, name tags, chat tools, streamer mode, crosshair, auto-reconnect, entity culling, compatibility registry, low-end preset, FPS Safety |
 | 0.2.1 | Bug-fix round: startup isolation, list clipping, compatibility rules, FPS Safety defaults; diagnostics log, in-game Diagnostics tab, `/omnicube diag`, startup self-check |
 | 0.2.2 | PolyForm Shield licence; hardware-tier presets and adaptive scaling in the Performance module |
+| 0.2.3 | Bounded first-person free look with smooth return; frame-animated zoom; custom OmniCube loading screen; full-brightness fix; armour material names and durability colours; auto-hiding empty HUD panels; TNT fuse crash fix |
 
-### Next — 0.3.x candidates
+### Next — 0.2.x candidates
 
 - **True server-safe inventory sorting** — click simulation, container-size and anti-cheat review first.
 - **More world overlays** — fluids, BUD switches, spawn-proofing.

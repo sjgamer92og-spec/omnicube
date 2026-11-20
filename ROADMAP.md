@@ -1,5 +1,17 @@
 # OmniCube roadmap
 
+## Released — v0.2.3 (Minecraft 1.21.11)
+
+- Free Look limited to a configurable arc, kept in first person, with a smooth return and
+  sensitivity-aware mouse movement
+- Frame-interpolated zoom with adjustable factor and animation time; the FOV option is untouched
+- Custom Splash module: OmniCube loading screen with progress bar and key hints
+- Fullbright default raised to maximum gamma so night and cave darkness are gone
+- Armor HUD names the worn material, colours durability green/amber/red and hides itself when empty;
+  the potion panel hides when there are no effects
+- TNT Fuse element no longer crashes when TNT is lit (snapshot scan, per-entity guards)
+- Self-check reports mixin state correctly (runtime handler renaming)
+
 ## Released — v0.2.2 (Minecraft 1.21.11)
 
 - PolyForm Shield License 1.0.0, with the required notice line and the identifier declared in
@@ -37,7 +49,7 @@
 - Compatibility registry, auto-disable, Compatibility screen and `/omnicube compat`
 - Low-end preset, FPS Safety and opt-in `/omnicube perf` profiler
 
-## Next — v0.3.x candidates
+## Next — v0.2.x candidates
 
 - True server-safe inventory sorting (review click simulation, container sizes and anticheat rules first)
 - More world overlays: fluids, BUD switches, spawn-proofing

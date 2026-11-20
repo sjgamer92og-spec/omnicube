@@ -231,6 +231,11 @@ public abstract class HudElement implements Feature {
 		return 0xFF7ED957;
 	}
 
+	/** Colour for one rendered line; elements can override it for status colours. */
+	protected int lineColor(int index, String line) {
+		return index == 0 ? accentColor() : 0xFFE6E6E6;
+	}
+
 	public void render(GuiGraphics graphics, Minecraft client, int screenX, int screenY) {
 		List<String> lines = lines(client);
 		if (lines == null || lines.isEmpty()) {
@@ -257,8 +262,7 @@ public abstract class HudElement implements Feature {
 			if (client.font.width(line) > width) {
 				line = client.font.plainSubstrByWidth(line, Math.max(1, width - client.font.width("..."))) + "...";
 			}
-			int color = i == 0 ? accentColor() : 0xFFE6E6E6;
-			graphics.drawString(client.font, line, screenX, y, color, true);
+			graphics.drawString(client.font, line, screenX, y, lineColor(i, line), true);
 			y += LINE_HEIGHT;
 		}
 	}
