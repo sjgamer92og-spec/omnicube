@@ -2,7 +2,9 @@
 
 ## OmniCube
 
-Original code, artwork and design: **sjgamer92og-spec**, licensed under the MIT License.
+Original code, artwork and design: **sjgamer92og**, licensed under the **PolyForm Shield License 1.0.0**.
+
+Required Notice: Copyright (c) 2026 sjgamer92og (OmniCube)
 
 No third-party mod source code or assets are included in this repository. v0.2.0's free look, container tooltip grid, name tags, chat timestamps/search/collapse, streamer redaction, crosshair renderer, auto-reconnect, conservative entity culling, world markers, compatibility registry and inventory tools were written from scratch against the public Minecraft/Fabric API and the decompiled mapping signatures. No code was copied from Cactus Mod or any other All Rights Reserved project.
 
@@ -46,18 +48,12 @@ These lists are loader-ID hypotheses, not bundled dependencies. A mod is only di
 
 The Minecraft/Fabric dependencies are not redistributed in source form. The built jar expects the standard Fabric runtime and Fabric API.
 
+## Performance backend
 
+The adaptive performance code in `dev.omnicube.client.optimization` — the `OptimizationBackend` contract and `BuiltinOptimizationBackend` — is original OmniCube work written against the public Minecraft `Options` API, and is released under this repository's PolyForm Shield License 1.0.0 like the rest of the mod. It contains no third-party code.
 
-The module boundary is intentionally prepared:
-
-- `dev.omnicube.client.optimization.OptimizationBackend` — backend contract
-- `dev.omnicube.client.optimization.BuiltinOptimizationBackend` — current, vanilla-options-only backend
-
-
-2. Keep its original license header and add the license text here.
-3. Implement `OptimizationBackend` and register it during client init.
-4. Add the author's copyright line and any required notice to this file and to the jar's `LICENSE_omnicube`-adjacent notices.
+The Performance module disables itself automatically when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS or OptiFine is installed, because those mods own the same video settings.
 
 ## License headers
 
-All OmniCube source files are original work released under the repository's MIT License. No copied files were used, so no third-party source headers are present. If code is adapted from another project in the future, the original header must be preserved and the project listed above with its license.
+All OmniCube source files are original work released under the repository's **PolyForm Shield License 1.0.0** (`Required Notice: Copyright (c) 2026 sjgamer92og (OmniCube)`). No copied files were used, so no third-party source headers are present. If code is adapted from another project in the future, the original header must be preserved and the project listed above with its license; such code stays under its own license and is not relicensed.

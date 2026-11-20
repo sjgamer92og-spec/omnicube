@@ -52,6 +52,7 @@ java {
 }
 
 jar {
+	// Ships the PolyForm Shield 1.0.0 terms with the Required Notice line intact.
 	def projectName = project.name
 	inputs.property "projectName", projectName
 	from("LICENSE") {

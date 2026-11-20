@@ -6,8 +6,9 @@ import net.minecraft.client.Minecraft;
  * Performance backend contract.
  *
  * <p>The built-in implementation is deliberately conservative and only changes
- * be dropped in by calling {@code PerformanceModule.setBackend(...)} during
- * client initialisation; no feature code needs to change.</p>
+ * vanilla video options. Another backend can be installed by calling
+ * {@code PerformanceModule.setBackend(...)} during client initialisation; no
+ * feature code needs to change.</p>
  */
 public interface OptimizationBackend {
 	String id();

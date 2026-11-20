@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.1+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.2+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
@@ -14,6 +14,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 **v0.2.0 (expanded)** adds streamer mode, the crosshair customizer, chat search and spam collapse, auto-reconnect, conservative entity culling, compatibility auto-disable/UI/reporting, the Low-end preset, FPS safety and an opt-in `/omnicube perf` profiler.
 
 **v0.2.1 is a bug-fix round with no new features.** It fixes the reasons features could fail to appear (a single startup failure aborting every later registration, a config list clipped by an unreleased scissor, over-eager compatibility rules and FPS Safety disabling features by default) and adds a diagnostics log, an in-game **Diagnostics** tab and `/omnicube diag`. Details are in the release notes and [CHANGELOG.md](CHANGELOG.md).
+
+**v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
 
 The name reflects the goal: one compact cube of client-side utilities covering many parts of the game. It is not affiliated with, endorsed by, or derived from Cactus Mod.
 
@@ -153,6 +155,7 @@ When a feature is provided elsewhere:
 - Enabling it from the config screen, HUD editor or command shows exactly: `This feature is already provided by <ModName>. Remove that mod first to enable it in OmniCube.`
 - Both versions never run together. The previous enabled state is preserved while the mod is present, so removing that mod can restore it.
 - The startup log lists every detected overlapping mod, every disabled feature and the reason. The **Compat** button on the config screen (and `/omnicube compat`) shows the same report.
+- The Performance module is fully disabled when Sodium/Sodium Extra/VulkanMod/Embeddium/Rubidium/Dynamic FPS/OptiFine is present, so it never changes video settings another mod is managing.
 
 HUD and world rendering use Fabric's HUD/world render events rather than vanilla renderer internals, so Sodium/Iris do not remove the HUD, crosshair or world markers.
 
@@ -188,7 +191,7 @@ The profiler was added because a real frame-time number cannot be produced in th
 1. Install **Java 21**.
 2. Install **Fabric Loader 0.18+** for Minecraft **1.21.11**.
 3. Put **Fabric API 0.141.6+1.21.11** (or newer for 1.21.11) in your `mods` folder.
-4. Put `omnicube-0.2.1+1.21.11.jar` from [`releases/`](releases/) into the same `mods` folder.
+4. Put `omnicube-0.2.2+1.21.11.jar` from [`releases/`](releases/) into the same `mods` folder.
 5. Launch the Fabric 1.21.11 profile.
 
 OmniCube is **client-side only**. Do not install it on a server; it is not required there and will not load.
@@ -323,13 +326,14 @@ OmniCube is an independent reimplementation of the "all-in-one toolkit" idea, no
 
 Sound control, Thumbnail Studio/pose/dummy-player features, minimap, replay, shaders and cosmetics are intentionally **not** included. Those require deeper renderer, auth or server-interaction hooks; they will be added carefully once the 1.21.11 base is proven. Cactus Mod is All Rights Reserved and is never used as a source.
 
+## Performance backend
 
+The Performance module adapts vanilla video settings (render distance, particles, clouds, entity distance) to your frame rate and puts every original value back when you disable it or quit. It only turns the same knobs the video settings screen does, so it never fights a renderer mod, and it disables itself entirely when Sodium, Sodium Extra, VulkanMod, Embeddium, Rubidium, Dynamic FPS or OptiFine is installed.
 
-```java
-```
+## License
 
-where the backend implements `dev.omnicube.client.optimization.OptimizationBackend`. See `CREDITS.md` for the attribution plan once that code is supplied.
+OmniCube is **source-available**, not open source. It is released under the **[PolyForm Shield License 1.0.0](LICENSE)**: anyone may read, use, modify and share the code, but may not use it to provide a product that competes with OmniCube.
 
-## License and credits
+`Required Notice: Copyright (c) 2026 sjgamer92og (OmniCube)` — keep this line with any copy of the software, as the license requires.
 
-OmniCube is released under the **MIT License**. See [LICENSE](LICENSE) and [CREDITS.md](CREDITS.md).
+Third-party components keep their own licenses; see [CREDITS.md](CREDITS.md).

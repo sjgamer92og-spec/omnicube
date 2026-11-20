@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2 — license change (Minecraft 1.21.11)
+
+No new features.
+
+- OmniCube is now released under the **PolyForm Shield License 1.0.0** instead of MIT. The mod stays
+  source-available: the code may be used, modified and shared, but not used to provide a product that
+  competes with OmniCube. `LICENSE` carries the full text plus the line
+  `Required Notice: Copyright (c) 2026 sjgamer92og (OmniCube)`.
+- `fabric.mod.json` now declares `PolyForm-Shield-1.0.0`; README, CREDITS and this changelog describe the
+  new terms. Third-party components keep their own licenses (see `CREDITS.md`).
+
 ## 0.2.1 — bug-fix round (Minecraft 1.21.11)
 
 No new features. Everything below fixes behaviour that was broken or misleading in 0.2.0.

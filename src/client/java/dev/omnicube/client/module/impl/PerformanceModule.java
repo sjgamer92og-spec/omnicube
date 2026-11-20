@@ -25,6 +25,7 @@ public final class PerformanceModule extends Module {
 	}
 
 	/**
+	 * Allows an alternative backend to be installed at startup.
 	 */
 	public static void setBackend(OptimizationBackend newBackend) {
 		if (newBackend != null) {

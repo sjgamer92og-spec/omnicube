@@ -11,7 +11,7 @@
 		"homepage": "https://github.com/sjgamer92og-spec/omnicube",
 		"sources": "https://github.com/sjgamer92og-spec/omnicube"
 	},
-	"license": "MIT",
+	"license": "PolyForm-Shield-1.0.0",
 	"icon": "assets/omnicube/icon.png",
 	"environment": "client",
 	"entrypoints": {
