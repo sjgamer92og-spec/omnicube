@@ -34,6 +34,21 @@ public interface Feature {
 		return "";
 	}
 
+	/**
+	 * Specific, human readable explanation for the current state. It is shown as a
+	 * tooltip in the GUI, printed by /omnicube diag and written to the diagnostics log.
+	 */
+	default String stateReason() {
+		return "";
+	}
+
+	/**
+	 * Marks the feature FAILED. Implementations disable it and remember why.
+	 */
+	default void markFailed(String reason) {
+		setEnabled(false);
+	}
+
 	default List<Setting<?>> settings() {
 		return List.of();
 	}

@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.optimization.BuiltinOptimizationBackend;
@@ -81,8 +82,9 @@ public final class PerformanceModule extends Module {
 					adaptiveEntityDistance.get()
 			));
 		} catch (Throwable throwable) {
+			Diagnostics.exception("performance.tick", throwable);
 			OmniCubeMod.LOGGER.debug("[OmniCube] Performance tick failed; disabling the module.", throwable);
-			setEnabled(false);
+			markFailed("Failed: " + Diagnostics.describe(throwable) + " in PerformanceModule.tick() (see stack trace)");
 		}
 	}
 }

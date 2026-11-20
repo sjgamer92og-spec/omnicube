@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -53,7 +54,8 @@ public final class EntityCullingModule extends Module {
 			if (cache.size() > 512) {
 				cache.clear();
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
+			Diagnostics.exception("entity_culling.tick", throwable);
 			cache.clear();
 		}
 	}
@@ -93,21 +95,23 @@ public final class EntityCullingModule extends Module {
 			cache.put(entity.getId(), new CacheEntry(cull, ticks));
 			return cull;
 		} catch (Throwable throwable) {
+			Diagnostics.exception("entity_culling.check", throwable);
 			if (!failureLogged) {
 				failureLogged = true;
 				OmniCubeMod.LOGGER.warn("[OmniCube] Entity culling check failed; skipping culling for this session.", throwable);
 			}
-			setEnabled(false);
+			markFailed("Failed: " + Diagnostics.describe(throwable) + " in EntityCullingModule.shouldCull() (see stack trace)");
 			return false;
 		}
 	}
 
 	public void fail(Throwable throwable) {
+		Diagnostics.exception("entity_culling.hook", throwable);
 		if (!failureLogged) {
 			failureLogged = true;
 			OmniCubeMod.LOGGER.error("[OmniCube] Entity culling failed; disabling it for this session.", throwable);
 		}
-		setEnabled(false);
+		markFailed("Failed: " + Diagnostics.describe(throwable) + " in entity culling hook (see stack trace)");
 	}
 
 	@Override

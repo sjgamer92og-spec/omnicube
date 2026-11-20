@@ -1,5 +1,6 @@
 package dev.omnicube.client.keybind;
 
+import dev.omnicube.client.diag.Diagnostics;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 
@@ -14,7 +15,7 @@ public final class KeybindConflicts {
 		List<String> conflicts = new ArrayList<>();
 		try {
 			Minecraft client = Minecraft.getInstance();
-			if (client.options == null) {
+			if (client == null || client.options == null) {
 				return conflicts;
 			}
 			List<KeyMapping> ours = new ArrayList<>();
@@ -39,7 +40,7 @@ public final class KeybindConflicts {
 					}
 					if (mine.same(other)) {
 						String line = mine.getTranslatedKeyMessage().getString() + " is also used by "
-								+ other.getTranslatedKeyMessage().getString();
+								+ other.getTranslatedKeyMessage().getString() + " from " + owner(other);
 						if (!conflicts.contains(line)) {
 							conflicts.add(line);
 						}
@@ -52,10 +53,30 @@ public final class KeybindConflicts {
 					}
 				}
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// A keybind warning must never stop the config screen opening.
+			Diagnostics.exception("keybind_conflicts", throwable);
 		}
 		return conflicts;
+	}
+
+	/** Names the mod that owns a conflicting keybind, using its category namespace. */
+	private static String owner(KeyMapping mapping) {
+		try {
+			KeyMapping.Category category = mapping.getCategory();
+			if (category == null) {
+				return "an unknown mod";
+			}
+			String namespace = category.id().getNamespace();
+			String label = category.label().getString();
+			if ("minecraft".equals(namespace)) {
+				return "Minecraft (" + label + ")";
+			}
+			return namespace + " (" + label + ")";
+		} catch (Throwable throwable) {
+			Diagnostics.exception("keybind_conflicts.owner", throwable);
+			return "an unknown mod";
+		}
 	}
 
 	private static void add(List<KeyMapping> mappings, KeyMapping mapping) {
@@ -63,5 +84,4 @@ public final class KeybindConflicts {
 			mappings.add(mapping);
 		}
 	}
-
 }

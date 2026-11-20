@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.ChatCollapseModule;
 import dev.omnicube.client.perf.PerfMonitor;
 import net.minecraft.client.gui.components.ChatComponent;
@@ -48,6 +49,7 @@ public abstract class ChatComponentMixin {
 			((ChatComponentAccessor) (Object) this).omnicube$refreshTrimmedMessages();
 			callback.cancel();
 		} catch (Throwable throwable) {
+			Diagnostics.exception("chat_collapse.hook", throwable);
 			ChatCollapseModule module = OmniCubeClient.chatCollapse();
 			if (module != null) {
 				module.fail("replace last line", throwable);

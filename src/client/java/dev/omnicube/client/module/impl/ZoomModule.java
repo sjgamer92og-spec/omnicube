@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.keybind.OmniCubeKeybinds;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
@@ -46,8 +47,9 @@ public final class ZoomModule extends Module {
 		}
 		try {
 			Minecraft.getInstance().options.fov().set(originalFov);
-		} catch (Throwable ignored) {
-			// Safe to ignore; options are still the vanilla defaults at worst.
+		} catch (Throwable throwable) {
+			// Options are still at worst the vanilla defaults.
+			Diagnostics.exception("zoom.restore", throwable);
 		} finally {
 			originalFov = null;
 		}

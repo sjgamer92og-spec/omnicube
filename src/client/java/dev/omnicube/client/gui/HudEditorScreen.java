@@ -1,6 +1,7 @@
 package dev.omnicube.client.gui;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.hud.HudElement;
 import dev.omnicube.client.hud.HudManager;
 import net.minecraft.client.gui.GuiGraphics;
@@ -89,6 +90,7 @@ public final class HudEditorScreen extends Screen {
 				boxes.add(new ElementBox(element, x, y, width, height));
 			} catch (Throwable throwable) {
 				// One malformed element must not make the editor unusable.
+				Diagnostics.exception("hud_editor." + element.id(), throwable);
 				boxes.add(new ElementBox(element, 0, 0, 12, 12));
 			}
 		}

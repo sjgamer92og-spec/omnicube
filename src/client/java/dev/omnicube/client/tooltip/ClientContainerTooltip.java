@@ -1,5 +1,6 @@
 package dev.omnicube.client.tooltip;
 
+import dev.omnicube.client.diag.Diagnostics;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
@@ -45,8 +46,9 @@ public final class ClientContainerTooltip implements ClientTooltipComponent {
 				graphics.renderItem(stack, itemX, itemY);
 				graphics.renderItemDecorations(font, stack, itemX, itemY);
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// A malformed stack should leave the rest of the tooltip intact.
+			Diagnostics.exception("tooltip.container_grid", throwable);
 		}
 	}
 

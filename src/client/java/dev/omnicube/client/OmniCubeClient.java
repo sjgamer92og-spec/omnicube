@@ -5,6 +5,8 @@ import dev.omnicube.client.command.OmniCubeCommands;
 import dev.omnicube.client.compat.CompatRegistry;
 import dev.omnicube.client.config.OmniCubeConfig;
 import dev.omnicube.client.config.ConfigManager;
+import dev.omnicube.client.diag.Diagnostics;
+import dev.omnicube.client.diag.SelfCheck;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.gui.ChatSearchScreen;
 import dev.omnicube.client.gui.OmniCubeScreen;
@@ -23,16 +25,16 @@ import dev.omnicube.client.module.impl.ChatModule;
 import dev.omnicube.client.module.impl.CoordinatesModule;
 import dev.omnicube.client.module.impl.CrosshairModule;
 import dev.omnicube.client.module.impl.EntityCullingModule;
-import dev.omnicube.client.module.impl.StreamerModule;
 import dev.omnicube.client.module.impl.FpsSafetyModule;
 import dev.omnicube.client.module.impl.FreeLookModule;
 import dev.omnicube.client.module.impl.FullbrightModule;
-import dev.omnicube.client.module.impl.InventoryToolsModule;
 import dev.omnicube.client.module.impl.HudModule;
+import dev.omnicube.client.module.impl.InventoryToolsModule;
 import dev.omnicube.client.module.impl.MacroModule;
 import dev.omnicube.client.module.impl.MarkerModule;
 import dev.omnicube.client.module.impl.NameTagModule;
 import dev.omnicube.client.module.impl.PerformanceModule;
+import dev.omnicube.client.module.impl.StreamerModule;
 import dev.omnicube.client.module.impl.TooltipModule;
 import dev.omnicube.client.module.impl.WaypointModule;
 import dev.omnicube.client.module.impl.ZoomModule;
@@ -41,15 +43,15 @@ import dev.omnicube.client.tooltip.ClientContainerTooltip;
 import dev.omnicube.client.tooltip.ContainerTooltip;
 import dev.omnicube.client.util.OmniCubeText;
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.rendering.v1.TooltipComponentCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.TooltipComponentCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -79,6 +81,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static PerformanceModule performanceModule;
 	private static ChatCollapseModule chatCollapseModule;
 	private static int lowFpsTicks;
+	private static int worldTicks;
+	private static int fpsSampleTicks;
 	private static boolean fpsGuardArmed = true;
 	private static StreamerModule streamerModule;
 	private static CrosshairModule crosshairModule;
@@ -86,136 +90,128 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static EntityCullingModule entityCullingModule;
 	private static FpsSafetyModule fpsSafetyModule;
 
+	private static boolean hudOverlayAttached;
+	private static boolean crosshairAttached;
+	private static boolean startupWarningShown;
+	private static boolean conflictsLogged;
+
 	@Override
 	public void onInitializeClient() {
+		// Diagnostics first: anything that fails below must be recorded, not swallowed.
+		Diagnostics.start();
+
 		config = ConfigManager.load();
 		modules = new ModuleManager();
 		hud = new HudManager();
 
-		fullbrightModule = register(new FullbrightModule());
-		zoomModule = register(new ZoomModule());
-		freeLookModule = register(new FreeLookModule());
-		register(new dev.omnicube.client.module.impl.AutoSprintModule());
-		register(new dev.omnicube.client.module.impl.FlySpeedModule());
-		register(new dev.omnicube.client.module.impl.ChatLogModule());
-		tooltipModule = register(new TooltipModule());
-		waypointModule = register(new WaypointModule());
-		macroModule = register(new MacroModule());
-		coordinatesModule = register(new CoordinatesModule());
-		performanceModule = register(new PerformanceModule());
-		hudModule = register(new HudModule());
-		chatLogModule = (ChatLogModule) modules.byId("chat_log");
-		chatModule = register(new ChatModule());
-		chatCollapseModule = register(new ChatCollapseModule());
-		streamerModule = register(new StreamerModule());
-		crosshairModule = register(new CrosshairModule());
-		autoReconnectModule = register(new AutoReconnectModule());
-		entityCullingModule = register(new EntityCullingModule());
-		fpsSafetyModule = register(new FpsSafetyModule());
-		nameTagModule = register(new NameTagModule());
-		markerModule = register(new MarkerModule());
-		register(new InventoryToolsModule());
-
-		HudElements.register(hud);
-		modules.read(config.modules);
-		hud.read(config.hud);
-		try {
-			CompatRegistry.detectAndApply(features());
-		} catch (Throwable throwable) {
-			OmniCubeMod.LOGGER.error("[OmniCube] Compatibility detection failed; all features keep their configured state.", throwable);
-		}
-		logCompatibilitySummary();
-		if (hudModule != null && hudModule.isEnabled()) {
-			HudElement.background = hudModule.backgroundEnabled();
-		}
-
-		OmniCubeKeybinds.init();
-		OmniCubeCommands.register();
-
-		TooltipComponentCallback.EVENT.register(data -> {
-			try {
-				return data instanceof ContainerTooltip tooltip ? new ClientContainerTooltip(tooltip.stacks()) : null;
-			} catch (Throwable ignored) {
-				return null;
-			}
+		safe("registry.modules", () -> {
+			fullbrightModule = register(new FullbrightModule());
+			zoomModule = register(new ZoomModule());
+			freeLookModule = register(new FreeLookModule());
+			register(new dev.omnicube.client.module.impl.AutoSprintModule());
+			register(new dev.omnicube.client.module.impl.FlySpeedModule());
+			register(new dev.omnicube.client.module.impl.ChatLogModule());
+			tooltipModule = register(new TooltipModule());
+			waypointModule = register(new WaypointModule());
+			macroModule = register(new MacroModule());
+			coordinatesModule = register(new CoordinatesModule());
+			performanceModule = register(new PerformanceModule());
+			hudModule = register(new HudModule());
+			chatLogModule = (ChatLogModule) modules.byId("chat_log");
+			chatModule = register(new ChatModule());
+			chatCollapseModule = register(new ChatCollapseModule());
+			streamerModule = register(new StreamerModule());
+			crosshairModule = register(new CrosshairModule());
+			autoReconnectModule = register(new AutoReconnectModule());
+			entityCullingModule = register(new EntityCullingModule());
+			fpsSafetyModule = register(new FpsSafetyModule());
+			nameTagModule = register(new NameTagModule());
+			markerModule = register(new MarkerModule());
+			register(new InventoryToolsModule());
 		});
 
-		// Draw before chat, the scoreboard and titles so those vanilla layers stay readable.
-		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR,
-				Identifier.fromNamespaceAndPath(OmniCubeMod.MOD_ID, "overlay"), (graphics, tickCounter) -> {
-					if (hudModule != null && hudModule.isEnabled()) {
-						hud.render(graphics, Minecraft.getInstance());
-					}
-				});
+		safe("registry.hud", () -> HudElements.register(hud));
+		safe("config.read.modules", () -> modules.read(config.modules));
+		safe("config.read.hud", () -> hud.read(config.hud));
+		safe("compat.detect", () -> CompatRegistry.detectAndApply(features()));
+		safe("compat.summary", OmniCubeClient::logCompatibilitySummary);
+		safe("hud.background", () -> {
+			if (hudModule != null) {
+				HudElement.masterEnabled = hudModule.isEnabled();
+				HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
+			}
+		});
+		safe("diagnostics.redactor", () ->
+				Diagnostics.installRedactor(text -> streamerModule == null ? text : streamerModule.redactString(text)));
 
-		// Fabric's HUD registry is deliberately used instead of patching vanilla
-		// rendering, so Sodium/Iris keep drawing the crosshair through their path.
-		try {
-			HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (graphics, tickCounter) -> {
-				long started = PerfMonitor.start();
-				try {
-					if (crosshairModule != null && crosshairModule.isEnabled()) {
-						crosshairModule.render(graphics);
-					} else if (original != null) {
-						original.render(graphics, tickCounter);
-					}
-				} finally {
-					PerfMonitor.record("render.crosshair", started);
-				}
-			});
-		} catch (Throwable throwable) {
-			OmniCubeMod.LOGGER.warn("[OmniCube] Could not register the custom crosshair; the vanilla one will be used.", throwable);
-		}
+		safe("keybinds", OmniCubeKeybinds::init);
+		safe("commands", OmniCubeCommands::register);
 
-		ItemTooltipCallback.EVENT.register((stack, tooltipContext, tooltipType, lines) -> {
+		safe("tooltip.component.callback", () -> TooltipComponentCallback.EVENT.register(data -> {
+			try {
+				return data instanceof ContainerTooltip tooltip ? new ClientContainerTooltip(tooltip.stacks()) : null;
+			} catch (Throwable throwable) {
+				Diagnostics.exception("tooltip.render", throwable);
+				return null;
+			}
+		}));
+
+		registerHudOverlay();
+		registerCrosshair();
+
+		safe("tooltip.callback", () -> ItemTooltipCallback.EVENT.register((stack, tooltipContext, tooltipType, lines) -> {
 			long started = PerfMonitor.start();
 			try {
 				if (tooltipModule != null && !lines.isEmpty()) {
 					tooltipModule.appendTooltip(stack, lines);
 				}
+			} catch (Throwable throwable) {
+				Diagnostics.exception("tooltip.append", throwable);
 			} finally {
 				PerfMonitor.record("tooltip.append", started);
 			}
-		});
+		}));
 
-		ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, timestamp) -> {
-			long started = PerfMonitor.start();
-			try {
-				Component display = message;
-				if (streamerModule != null) {
-					display = streamerModule.redact(display);
-				}
-				boolean timestamped = chatModule != null && chatModule.timestampEnabled();
-				if (timestamped) {
-					display = chatModule.decorate(display);
-				}
-				if (chatModule != null) {
-					chatModule.remember(display);
-				}
-				boolean changed = timestamped || !display.equals(message);
-				if (changed) {
-					if (chatLogModule != null) {
-						chatLogModule.recordChat(display.getString());
-					}
-					Minecraft client = Minecraft.getInstance();
-					Component finalDisplay = display;
-					client.execute(() -> {
-						try {
-							client.gui.getChat().addMessage(finalDisplay);
-						} catch (Throwable ignored) {
-							// The message is simply dropped if the chat HUD is unavailable.
+		safe("chat.allow", () -> ClientReceiveMessageEvents.ALLOW_CHAT.register(
+				(message, signedMessage, sender, params, timestamp) -> {
+					long started = PerfMonitor.start();
+					try {
+						Component display = message;
+						if (streamerModule != null) {
+							display = streamerModule.redact(display);
 						}
-					});
-				}
-				return !changed;
-			} catch (Throwable throwable) {
-				return true;
-			} finally {
-				PerfMonitor.record("chat.receive", started);
-			}
-		});
+						boolean timestamped = chatModule != null && chatModule.timestampEnabled();
+						if (timestamped) {
+							display = chatModule.decorate(display);
+						}
+						if (chatModule != null) {
+							chatModule.remember(display);
+						}
+						boolean changed = timestamped || !display.equals(message);
+						if (changed) {
+							if (chatLogModule != null) {
+								chatLogModule.recordChat(display.getString());
+							}
+							Minecraft client = Minecraft.getInstance();
+							Component finalDisplay = display;
+							client.execute(() -> {
+								try {
+									client.gui.getChat().addMessage(finalDisplay);
+								} catch (Throwable throwable) {
+									Diagnostics.exception("chat.display", throwable);
+								}
+							});
+						}
+						return !changed;
+					} catch (Throwable throwable) {
+						Diagnostics.exception("chat.receive", throwable);
+						return true;
+					} finally {
+						PerfMonitor.record("chat.receive", started);
+					}
+				}));
 
-		ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
+		safe("chat.modify_game", () -> ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
 			try {
 				Component display = message;
 				if (!overlay && streamerModule != null) {
@@ -225,79 +221,200 @@ public final class OmniCubeClient implements ClientModInitializer {
 					display = chatModule.decorate(display);
 				}
 				return display;
-			} catch (Throwable ignored) {
-				// Keep the original game message.
+			} catch (Throwable throwable) {
+				Diagnostics.exception("chat.modify_game", throwable);
 			}
 			return message;
-		});
+		}));
 
-		ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, timestamp) -> {
-			if (chatLogModule != null) {
-				chatLogModule.recordChat(message.getString());
-			}
-		});
+		safe("chat.log.callback", () -> ClientReceiveMessageEvents.CHAT.register(
+				(message, signedMessage, sender, params, timestamp) -> {
+					if (chatLogModule != null) {
+						chatLogModule.recordChat(message.getString());
+					}
+				}));
 
-		ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+		safe("chat.game.callback", () -> ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
 			if (chatLogModule != null && !overlay) {
 				chatLogModule.recordSystem(message.getString());
 			}
-		});
+		}));
 
-		WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+		safe("world.render.callback", () -> WorldRenderEvents.AFTER_ENTITIES.register(context -> {
 			long nameTagsStarted = PerfMonitor.start();
 			try {
-				if (nameTagModule != null) {
+				if (nameTagModule != null && nameTagModule.isEnabled()) {
 					nameTagModule.render(context);
 				}
-			} catch (Throwable ignored) {
-				// One world feature must not break another or the vanilla pass.
+			} catch (Throwable throwable) {
+				// One world feature must not break another or the vanilla pass, but the
+				// failure is never silent.
+				Diagnostics.exception("render.name_tags", throwable);
+				if (nameTagModule != null) {
+					nameTagModule.markFailed("Failed: " + Diagnostics.describe(throwable)
+							+ " in NameTagModule.render() (see stack trace)");
+				}
 			} finally {
 				PerfMonitor.record("render.name_tags", nameTagsStarted);
 			}
 			long markersStarted = PerfMonitor.start();
 			try {
-				if (markerModule != null) {
+				if (markerModule != null && markerModule.isEnabled()) {
 					markerModule.render(context);
 				}
-			} catch (Throwable ignored) {
-				// Same isolation for markers.
+			} catch (Throwable throwable) {
+				Diagnostics.exception("render.world_markers", throwable);
+				if (markerModule != null) {
+					markerModule.markFailed("Failed: " + Diagnostics.describe(throwable)
+							+ " in MarkerModule.render() (see stack trace)");
+				}
 			} finally {
 				PerfMonitor.record("render.world_markers", markersStarted);
 			}
+		}));
+
+		safe("tick.callback", () -> ClientTickEvents.END_CLIENT_TICK.register(OmniCubeClient::tick));
+
+		safe("connection.callbacks", () -> {
+			ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+				Diagnostics.event("world", "joined world");
+				worldTicks = 0;
+				lowFpsTicks = 0;
+				fpsGuardArmed = true;
+				try {
+					if (performanceModule != null && performanceModule.isEnabled()) {
+						performanceModule.captureForSession();
+					}
+					if (chatCollapseModule != null) {
+						chatCollapseModule.reset();
+					}
+					if (autoReconnectModule != null) {
+						autoReconnectModule.reset();
+						autoReconnectModule.rememberServer(client);
+					}
+				} catch (Throwable throwable) {
+					Diagnostics.exception("world.join", throwable);
+				}
+				showStartupWarning();
+			});
+			ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+				Diagnostics.event("world", "left world");
+				try {
+					restoreSessionOptions();
+					if (chatCollapseModule != null) {
+						chatCollapseModule.reset();
+					}
+					if (autoReconnectModule != null) {
+						autoReconnectModule.onDisconnect(client);
+					}
+				} catch (Throwable throwable) {
+					Diagnostics.exception("world.disconnect", throwable);
+				}
+				Diagnostics.flush();
+			});
 		});
 
-		ClientTickEvents.END_CLIENT_TICK.register(OmniCubeClient::tick);
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			if (performanceModule != null && performanceModule.isEnabled()) {
-				performanceModule.captureForSession();
-			}
-			if (chatCollapseModule != null) {
-				chatCollapseModule.reset();
-			}
-			if (autoReconnectModule != null) {
-				autoReconnectModule.reset();
-				autoReconnectModule.rememberServer(client);
-			}
-			lowFpsTicks = 0;
-			fpsGuardArmed = true;
+		safe("lifecycle.callbacks", () -> {
+			ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+				safe("shutdown.restore", OmniCubeClient::restoreSessionOptions);
+				safe("shutdown.save", OmniCubeClient::saveConfig);
+				Diagnostics.event("lifecycle", "client stopping");
+				Diagnostics.flushForShutdown();
+			});
+			// flushForShutdown is exception-proof, so the hook never throws during teardown.
+			Runtime.getRuntime().addShutdownHook(new Thread(Diagnostics::flushForShutdown,
+					"OmniCube-Diagnostics-Shutdown"));
 		});
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-			restoreSessionOptions();
-			if (chatCollapseModule != null) {
-				chatCollapseModule.reset();
-			}
-			if (autoReconnectModule != null) {
-				autoReconnectModule.onDisconnect(client);
-			}
-		});
-		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-			restoreSessionOptions();
-			saveConfig();
+
+		// The feature status table is written before the report is published, so the log
+		// always contains one row per feature even when startup fails.
+		safe("diagnostics.status", () -> {
+			modules.recordAllStates();
+			hud.recordAllStates();
+			Diagnostics.performanceLine("frame costs are measured in-game with /omnicube perf");
+			Diagnostics.performanceLine("FPS safety: " + (fpsSafetyModule != null && fpsSafetyModule.isEnabled()
+					? "armed at floor " + fpsSafetyModule.floor() + " FPS after 5s below it"
+					: "disabled"));
 		});
 
 		// Create the config file on first run so users can find and edit it.
-		ConfigManager.save(config, modules, hud);
-		OmniCubeMod.LOGGER.info("[OmniCube] loaded {} modules and {} HUD elements", modules.modules().size(), hud.elements().size());
+		safe("config.write.initial", () -> ConfigManager.save(config, modules, hud));
+
+		safe("self.check", () -> SelfCheck.run(hudOverlayAttached, crosshairAttached));
+
+		Diagnostics.publishStartupReport();
+		Diagnostics.event("lifecycle", "OmniCube " + OmniCubeMod.MOD_NAME + " initialized: "
+				+ modules.modules().size() + " modules, " + hud.elements().size() + " HUD elements, "
+				+ SelfCheck.failures().size() + " failed check(s)");
+		OmniCubeMod.LOGGER.info("[OmniCube] loaded {} modules and {} HUD elements", modules.modules().size(),
+				hud.elements().size());
+	}
+
+	private static void registerHudOverlay() {
+		Identifier id = Identifier.fromNamespaceAndPath(OmniCubeMod.MOD_ID, "overlay");
+		try {
+			HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR, id, (graphics, tickCounter) -> {
+				if (hudModule != null && hudModule.isEnabled()) {
+					hud.render(graphics, Minecraft.getInstance());
+				}
+			});
+			hudOverlayAttached = true;
+		} catch (Throwable throwable) {
+			// A single failed hook must never abort the rest of the initializer; that is
+			// exactly how the HUD and the key handlers used to disappear silently.
+			Diagnostics.exception("hud.overlay.attach", throwable);
+			OmniCubeMod.LOGGER.error("[OmniCube] Could not attach the HUD overlay after the boss bar; trying last.", throwable);
+			try {
+				HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(OmniCubeMod.MOD_ID, "overlay_last"),
+						(graphics, tickCounter) -> {
+							if (hudModule != null && hudModule.isEnabled()) {
+								hud.render(graphics, Minecraft.getInstance());
+							}
+						});
+				hudOverlayAttached = true;
+			} catch (Throwable fallbackFailure) {
+				Diagnostics.exception("hud.overlay.attach.fallback", fallbackFailure);
+				OmniCubeMod.LOGGER.error("[OmniCube] The HUD overlay could not be registered at all.", fallbackFailure);
+			}
+		}
+	}
+
+	private static void registerCrosshair() {
+		try {
+			HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, original -> (graphics, tickCounter) -> {
+				long started = PerfMonitor.start();
+				try {
+					if (crosshairModule != null && crosshairModule.isEnabled()) {
+						crosshairModule.render(graphics);
+					} else if (original != null) {
+						original.render(graphics, tickCounter);
+					}
+				} catch (Throwable throwable) {
+					Diagnostics.exception("render.crosshair", throwable);
+					if (original != null) {
+						original.render(graphics, tickCounter);
+					}
+				} finally {
+					PerfMonitor.record("render.crosshair", started);
+				}
+			});
+			crosshairAttached = true;
+		} catch (Throwable throwable) {
+			Diagnostics.exception("crosshair.attach", throwable);
+			OmniCubeMod.LOGGER.warn("[OmniCube] Could not register the custom crosshair; the vanilla one will be used.", throwable);
+		}
+	}
+
+	/** Runs one registration step in isolation so one failure cannot hide the rest. */
+	private static void safe(String name, Runnable action) {
+		try {
+			action.run();
+		} catch (Throwable throwable) {
+			Diagnostics.exception(name, throwable);
+			Diagnostics.collisionLine("registration failed: " + name + " ("
+					+ Diagnostics.describe(throwable) + ")");
+			OmniCubeMod.LOGGER.error("[OmniCube] Startup step '{}' failed; continuing with the other features.", name, throwable);
+		}
 	}
 
 	private static <T extends Module> T register(T module) {
@@ -305,53 +422,93 @@ public final class OmniCubeClient implements ClientModInitializer {
 		return module;
 	}
 
+	private static void showStartupWarning() {
+		if (startupWarningShown) {
+			return;
+		}
+		startupWarningShown = true;
+		int failures = SelfCheck.failures().size();
+		if (failures <= 0) {
+			return;
+		}
+		OmniCubeText.sendError("OmniCube: " + failures
+				+ " features failed to load. See logs/" + Diagnostics.FILE_NAME);
+	}
+
+	private static void openScreen(String name, java.util.function.Supplier<net.minecraft.client.gui.screens.Screen> screen) {
+		try {
+			Minecraft client = Minecraft.getInstance();
+			client.setScreen(screen.get());
+			Diagnostics.event("screen", "opened " + name);
+		} catch (Throwable throwable) {
+			Diagnostics.exception("screen." + name, throwable);
+			OmniCubeText.sendError("Could not open " + name + ".");
+		}
+	}
+
 	private static void tick(Minecraft client) {
+		if (!conflictsLogged) {
+			// Keybind scanning needs a fully constructed client, so it runs on the first
+			// tick instead of during the initializer where Minecraft.getInstance() is not
+			// guaranteed to have usable options yet.
+			conflictsLogged = true;
+			safe("keybind.conflicts", () -> {
+				for (String conflict : dev.omnicube.client.keybind.KeybindConflicts.find()) {
+					Diagnostics.collisionLine("keybind: " + conflict);
+				}
+			});
+		}
+		if (client.player != null && client.level != null) {
+			worldTicks = Math.min(worldTicks + 1, Integer.MAX_VALUE);
+		}
 		if (client.player != null && client.screen == null) {
-			if (OmniCubeKeybinds.openMenu != null) {
-				while (OmniCubeKeybinds.openMenu.consumeClick()) {
-					client.setScreen(new OmniCubeScreen(null));
-				}
-			}
-			if (OmniCubeKeybinds.hudEditor != null) {
-				while (OmniCubeKeybinds.hudEditor.consumeClick()) {
-					client.setScreen(new HudEditorScreen(null));
-				}
-			}
-			if (OmniCubeKeybinds.addWaypoint != null) {
-				while (OmniCubeKeybinds.addWaypoint.consumeClick()) {
-					quickWaypoint(client.player);
-				}
-			}
-			if (OmniCubeKeybinds.copyCoordinates != null) {
-				while (OmniCubeKeybinds.copyCoordinates.consumeClick()) {
-					if (coordinatesModule != null && coordinatesModule.isEnabled()) {
-						coordinatesModule.copyPosition();
+			safe("tick.keybinds", () -> {
+				if (OmniCubeKeybinds.openMenu != null) {
+					while (OmniCubeKeybinds.openMenu.consumeClick()) {
+						openScreen("OmniCube", () -> new OmniCubeScreen(null));
 					}
 				}
-			}
-			if (OmniCubeKeybinds.copyChat != null) {
-				while (OmniCubeKeybinds.copyChat.consumeClick()) {
-					if (chatModule != null) {
-						chatModule.copyLast();
+				if (OmniCubeKeybinds.hudEditor != null) {
+					while (OmniCubeKeybinds.hudEditor.consumeClick()) {
+						openScreen("HUD Editor", () -> new HudEditorScreen(null));
 					}
 				}
-			}
-			if (OmniCubeKeybinds.inventoryTools != null) {
-				while (OmniCubeKeybinds.inventoryTools.consumeClick()) {
-					if (modules.byId("inventory_tools") != null && modules.byId("inventory_tools").isEnabled()) {
-						client.setScreen(new InventoryToolsScreen(null));
+				if (OmniCubeKeybinds.addWaypoint != null) {
+					while (OmniCubeKeybinds.addWaypoint.consumeClick()) {
+						quickWaypoint(client.player);
 					}
 				}
-			}
-			if (OmniCubeKeybinds.chatSearch != null) {
-				while (OmniCubeKeybinds.chatSearch.consumeClick()) {
-					if (chatModule != null && chatModule.isEnabled()) {
-						client.setScreen(new ChatSearchScreen(null));
-					} else {
-						OmniCubeText.sendError("Enable Better Chat first.");
+				if (OmniCubeKeybinds.copyCoordinates != null) {
+					while (OmniCubeKeybinds.copyCoordinates.consumeClick()) {
+						if (coordinatesModule != null && coordinatesModule.isEnabled()) {
+							coordinatesModule.copyPosition();
+						}
 					}
 				}
-			}
+				if (OmniCubeKeybinds.copyChat != null) {
+					while (OmniCubeKeybinds.copyChat.consumeClick()) {
+						if (chatModule != null) {
+							chatModule.copyLast();
+						}
+					}
+				}
+				if (OmniCubeKeybinds.inventoryTools != null) {
+					while (OmniCubeKeybinds.inventoryTools.consumeClick()) {
+						if (modules.byId("inventory_tools") != null && modules.byId("inventory_tools").isEnabled()) {
+							openScreen("Inventory Tools", () -> new InventoryToolsScreen(null));
+						}
+					}
+				}
+				if (OmniCubeKeybinds.chatSearch != null) {
+					while (OmniCubeKeybinds.chatSearch.consumeClick()) {
+						if (chatModule != null && chatModule.isEnabled()) {
+							openScreen("Chat Search", () -> new ChatSearchScreen(null));
+						} else {
+							OmniCubeText.sendError("Enable Better Chat first.");
+						}
+					}
+				}
+			});
 		}
 
 		long perfStart = PerfMonitor.start();
@@ -364,11 +521,31 @@ public final class OmniCubeClient implements ClientModInitializer {
 			try {
 				autoReconnectModule.tick(client);
 			} catch (Throwable throwable) {
+				Diagnostics.exception("auto_reconnect.tick", throwable);
 				OmniCubeMod.LOGGER.warn("[OmniCube] Auto Reconnect tick failed; resetting it.", throwable);
 				autoReconnectModule.reset();
 			}
 		}
 		fpsGuardTick(client);
+		fpsSampleTick(client);
+	}
+
+	/** A single FPS sample every 30 seconds while in a world, queued off the render thread. */
+	private static void fpsSampleTick(Minecraft client) {
+		if (client.player == null || client.level == null) {
+			return;
+		}
+		if (++fpsSampleTicks < 600) {
+			return;
+		}
+		fpsSampleTicks = 0;
+		try {
+			Diagnostics.performance("FPS " + client.getFps() + " (frame "
+					+ String.format(java.util.Locale.ROOT, "%.1f ms", client.getFrameTimeNs() / 1_000_000.0D)
+					+ ", world ticks " + worldTicks + ")");
+		} catch (Throwable throwable) {
+			Diagnostics.exception("fps.sample", throwable);
+		}
 	}
 
 	private static void fpsGuardTick(Minecraft client) {
@@ -378,8 +555,15 @@ public final class OmniCubeClient implements ClientModInitializer {
 				lowFpsTicks = 0;
 				return;
 			}
+			// Never judge FPS during the first ten seconds of a world: world load and
+			// chunk building are always slow and used to disable features for good.
+			if (worldTicks < 200) {
+				lowFpsTicks = 0;
+				return;
+			}
 			int fps = client.getFps();
-			if (fps > 0 && fps < Math.max(10, fpsSafetyModule.floor())) {
+			int floor = Math.max(10, fpsSafetyModule.floor());
+			if (fps > 0 && fps < floor) {
 				lowFpsTicks++;
 			} else {
 				lowFpsTicks = 0;
@@ -387,30 +571,44 @@ public final class OmniCubeClient implements ClientModInitializer {
 			if (lowFpsTicks >= 100 && fpsGuardArmed) {
 				fpsGuardArmed = false;
 				lowFpsTicks = 0;
-				List<String> disabled = disableHeavyFeatures();
+				String reason = "Disabled by FPS Safety (FPS " + fps + " < " + floor + " for 5s)";
+				List<String> disabled = disableHeavyFeatures(reason);
 				if (!disabled.isEmpty()) {
-					OmniCubeText.sendError("FPS safety: below " + fpsSafetyModule.floor() + " FPS, disabled "
+					OmniCubeText.sendError("FPS safety: below " + floor + " FPS, disabled "
 							+ String.join(", ", disabled) + ".");
+					Diagnostics.performance(reason + " -> " + String.join(", ", disabled));
+					Diagnostics.event("fps_safety", reason + " -> " + String.join(", ", disabled));
 					OmniCubeMod.LOGGER.warn("[OmniCube] FPS safety disabled: {}", disabled);
-					OmniCubeClient.saveConfig();
 				}
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("fps_safety", throwable);
 			OmniCubeMod.LOGGER.debug("[OmniCube] FPS safety check failed.", throwable);
 		}
 	}
 
-	public static List<String> disableHeavyFeatures() {
+	public static List<String> disableHeavyFeatures(String reason) {
 		List<String> disabled = new ArrayList<>();
 		for (String id : List.of("free_look", "name_tags", "world_markers", "entity_culling", "inventory_tools",
 				"hud_entities", "hud_tnt", "hud_keystrokes", "hud_cps")) {
 			Feature feature = featureById(id);
-			if (feature != null && feature.isEnabled()) {
-				feature.setEnabled(false);
-				disabled.add(id);
+			if (feature == null || !feature.isEnabled()) {
+				continue;
 			}
+			if (feature instanceof Module module) {
+				module.setEnabledAutomatically(false, reason);
+			} else if (feature instanceof HudElement element) {
+				element.setEnabledAutomatically(false, reason);
+			} else {
+				continue;
+			}
+			disabled.add(id);
 		}
 		return disabled;
+	}
+
+	public static List<String> disableHeavyFeatures() {
+		return disableHeavyFeatures("Disabled by FPS Safety (low FPS for 5s)");
 	}
 
 	public static void applyLowEndPreset() {
@@ -420,26 +618,34 @@ public final class OmniCubeClient implements ClientModInitializer {
 				"hud_potions", "hud_armor", "hud_durability", "hud_keystrokes", "hud_cps", "hud_entities",
 				"hud_speed", "hud_biome", "hud_facing", "hud_ping", "hud_server", "hud_memory")) {
 			Feature feature = featureById(id);
-			if (feature != null && feature.isEnabled()) {
-				feature.setEnabled(false);
-				disabled.add(id);
+			if (feature == null || !feature.isEnabled()) {
+				continue;
 			}
+			if (feature instanceof Module module) {
+				module.setEnabledWithReason(false, "Disabled by Low-end preset");
+			} else if (feature instanceof HudElement element) {
+				element.setEnabledWithReason(false, "Disabled by Low-end preset");
+			} else {
+				continue;
+			}
+			disabled.add(id);
 		}
 		String performance = "already on";
 		if (performanceModule != null) {
 			if (!performanceModule.isAvailable()) {
-				performance = "skipped (another performance mod is active)";
+				performance = "skipped (" + performanceModule.stateReason() + ")";
 			} else if (!performanceModule.isEnabled()) {
-				performanceModule.setEnabled(true);
+				performanceModule.setEnabledWithReason(true, "Enabled by Low-end preset");
 				performance = "enabled";
 			}
 		}
 		fpsGuardArmed = false;
 		saveConfig();
+		Diagnostics.event("preset", "low-end preset applied: disabled " + disabled.size()
+				+ " heavy features; Performance " + performance);
 		OmniCubeText.send("Low-end preset applied: disabled " + disabled.size()
 				+ " heavy features; Performance " + performance + ".");
 	}
-
 
 	private static void quickWaypoint(LocalPlayer player) {
 		if (waypointModule == null || !waypointModule.isEnabled()) {
@@ -463,6 +669,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 				performanceModule.restoreForSession();
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("options.restore", throwable);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not restore options while leaving the world.", throwable);
 		}
 	}
@@ -483,6 +690,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 				OmniCubeMod.LOGGER.info("[OmniCube]   reason for {}: {}", entry.getKey(), entry.getValue());
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("compat.summary", throwable);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not log the compatibility summary.", throwable);
 		}
 	}
@@ -499,6 +707,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 				}
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("compat.lines", throwable);
 			lines.add("Compatibility information is unavailable.");
 		}
 		return lines;
@@ -508,18 +717,28 @@ public final class OmniCubeClient implements ClientModInitializer {
 		try {
 			ConfigManager.save(config, modules, hud);
 		} catch (Throwable throwable) {
+			Diagnostics.exception("config.save", throwable);
 			OmniCubeMod.LOGGER.error("[OmniCube] Unexpected config save failure.", throwable);
 		}
 	}
 
 	public static void reloadConfig() {
-		config = ConfigManager.load();
-		modules.read(config.modules);
-		hud.read(config.hud);
-		if (hudModule != null) {
-			HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
+		try {
+			config = ConfigManager.load();
+			modules.read(config.modules);
+			hud.read(config.hud);
+			if (hudModule != null) {
+				HudElement.masterEnabled = hudModule.isEnabled();
+				HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
+			}
+			modules.recordAllStates();
+			hud.recordAllStates();
+			Diagnostics.event("config", "reloaded " + ConfigManager.loadSummary());
+			OmniCubeText.send("Config reloaded.");
+		} catch (Throwable throwable) {
+			Diagnostics.exception("config.reload", throwable);
+			OmniCubeText.sendError("Config reload failed; see logs/" + Diagnostics.FILE_NAME);
 		}
-		OmniCubeText.send("Config reloaded.");
 	}
 
 	public static OmniCubeConfig config() {
@@ -592,6 +811,10 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static FpsSafetyModule fpsSafety() {
 		return fpsSafetyModule;
+	}
+
+	public static HudModule hudOverlay() {
+		return hudModule;
 	}
 
 	public static List<Feature> features() {

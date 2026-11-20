@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.keybind.OmniCubeKeybinds;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
@@ -56,7 +57,8 @@ public final class FreeLookModule extends Module {
 			freePitch = Math.max(-90.0F, Math.min(90.0F, freePitch));
 			freeYaw = freeYaw % 360.0F;
 			return true;
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
+			Diagnostics.exception("free_look.mouse", throwable);
 			active = false;
 			return false;
 		} finally {

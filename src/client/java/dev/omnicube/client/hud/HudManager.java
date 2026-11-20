@@ -3,6 +3,7 @@ package dev.omnicube.client.hud;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.perf.PerfMonitor;
 import net.minecraft.client.Minecraft;
@@ -17,11 +18,11 @@ import java.util.Map;
 public final class HudManager {
 	private final List<HudElement> elements = new ArrayList<>();
 	private final Map<String, HudElement> byId = new LinkedHashMap<>();
-	private boolean errorLogged;
 
 	public void register(HudElement element) {
 		if (byId.containsKey(element.id())) {
 			OmniCubeMod.LOGGER.warn("[OmniCube] Duplicate HUD element id '{}' ignored.", element.id());
+			Diagnostics.event("registry", "duplicate HUD id ignored: " + element.id());
 			return;
 		}
 		elements.add(element);
@@ -54,11 +55,13 @@ public final class HudManager {
 				int y = element.screenY(client, guiHeight);
 				element.render(graphics, client, x, y);
 			} catch (Throwable throwable) {
-				element.setEnabled(false);
-				if (!errorLogged) {
-					errorLogged = true;
-					OmniCubeMod.LOGGER.error("[OmniCube] HUD element '{}' failed and was disabled.", element.id(), throwable);
-				}
+				// Log every element failure with a full stack trace and disable only that
+				// element; other elements and vanilla HUD keep working.
+				String reason = "Failed: " + Diagnostics.describe(throwable) + " in " + element.id()
+						+ ".render() (see stack trace)";
+				element.markFailed(reason);
+				Diagnostics.exception(element.id(), throwable);
+				OmniCubeMod.LOGGER.error("[OmniCube] HUD element '{}' failed and was disabled.", element.id(), throwable);
 			} finally {
 				PerfMonitor.record("hud." + element.id(), started);
 			}
@@ -67,7 +70,9 @@ public final class HudManager {
 
 	public void write(JsonObject root) {
 		for (HudElement element : elements) {
-			if (!element.isAvailable()) {
+			// Blocked elements and auto-disabled elements keep the entry that was saved
+			// before, so removing the other mod or the low-FPS condition restores it.
+			if (!element.isAvailable() || element.autoDisabled()) {
 				continue;
 			}
 			JsonObject entry = new JsonObject();
@@ -95,9 +100,17 @@ public final class HudManager {
 				if (entry.has("enabled")) {
 					element.setEnabled(entry.get("enabled").getAsBoolean());
 				}
-			} catch (RuntimeException ignored) {
+			} catch (RuntimeException exception) {
 				// Bad entry: keep the default layout for this element only.
+				Diagnostics.exception(element.id() + ".config", exception);
+				OmniCubeMod.LOGGER.warn("[OmniCube] Invalid layout entry for '{}'; using defaults.", element.id(), exception);
 			}
+		}
+	}
+
+	public void recordAllStates() {
+		for (HudElement element : elements) {
+			element.recordState();
 		}
 	}
 

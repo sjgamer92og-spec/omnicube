@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.TooltipModule;
 import dev.omnicube.client.tooltip.ContainerTooltip;
 import net.minecraft.core.component.DataComponents;
@@ -50,6 +51,7 @@ public abstract class ItemStackMixin {
 			}
 		} catch (Throwable throwable) {
 			// Keep vanilla tooltips working if a stack has unusual container data.
+			Diagnostics.exception("tooltips.item_hook", throwable);
 			TooltipModule module = OmniCubeClient.tooltips();
 			if (module != null) {
 				module.fail(throwable);

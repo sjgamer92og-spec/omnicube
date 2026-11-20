@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -29,8 +30,9 @@ public final class CoordinatesModule extends Module {
 				if (!dimension.isEmpty()) {
 					text = text + " (" + dimension + ")";
 				}
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// Copy the coordinates even if the dimension is unavailable.
+				Diagnostics.exception("coordinates.dimension", throwable);
 			}
 		}
 		OmniCubeText.copyToClipboard(text);

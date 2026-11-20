@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -32,11 +33,12 @@ public final class TooltipModule extends Module {
 	}
 
 	public void fail(Throwable throwable) {
+		Diagnostics.exception("tooltips", throwable);
 		if (!failureLogged) {
 			failureLogged = true;
 			OmniCubeMod.LOGGER.error("[OmniCube] Tooltip hook failed; disabling it for this session.", throwable);
 		}
-		setEnabled(false);
+		markFailed("Failed: " + Diagnostics.describe(throwable) + " in TooltipModule (see stack trace)");
 	}
 
 	public void appendTooltip(ItemStack stack, List<Component> lines) {
@@ -48,8 +50,9 @@ public final class TooltipModule extends Module {
 			try {
 				var key = BuiltInRegistries.ITEM.getKey(stack.getItem());
 				lines.add(Component.literal(key.toString()).withStyle(ChatFormatting.DARK_GRAY));
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// Registry access can be odd during a reload; the tooltip just stays clean.
+				Diagnostics.exception("tooltips.item_id", throwable);
 			}
 		}
 
@@ -65,8 +68,9 @@ public final class TooltipModule extends Module {
 					lines.add(Component.literal("Food: " + food.nutrition() + " (" + String.format(java.util.Locale.ROOT, "%.1f", food.saturation()) + " saturation)")
 							.withStyle(ChatFormatting.GRAY));
 				}
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// Not every stack exposes a food component.
+				Diagnostics.exception("tooltips.food", throwable);
 			}
 		}
 
@@ -93,8 +97,9 @@ public final class TooltipModule extends Module {
 				} else if (total > shown) {
 					lines.add(Component.literal("  +" + (total - shown) + " more").withStyle(ChatFormatting.DARK_GRAY));
 				}
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// Container data is optional and may be malformed on a server.
+				Diagnostics.exception("tooltips.container", throwable);
 			}
 		}
 	}

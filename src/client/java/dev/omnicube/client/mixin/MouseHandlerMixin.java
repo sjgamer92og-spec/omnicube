@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.FreeLookModule;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,6 +28,7 @@ public abstract class MouseHandlerMixin {
 			}
 		} catch (Throwable throwable) {
 			// If anything goes wrong, let vanilla handle the mouse normally.
+			Diagnostics.exception("free_look.mouse_hook", throwable);
 			FreeLookModule module = OmniCubeClient.freeLook();
 			if (module != null) {
 				module.fail(throwable);

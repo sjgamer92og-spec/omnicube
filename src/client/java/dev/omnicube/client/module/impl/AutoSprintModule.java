@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import net.minecraft.client.Minecraft;
@@ -25,8 +26,9 @@ public final class AutoSprintModule extends Module {
 		if (ClientCompat.isKeyDown(GLFW.GLFW_KEY_W)) {
 			try {
 				player.setSprinting(true);
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// A server may reject the state change; never let that break the tick.
+				Diagnostics.exception("auto_sprint", throwable);
 			}
 		}
 	}

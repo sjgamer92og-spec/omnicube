@@ -1,6 +1,7 @@
 package dev.omnicube.client.compat;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.hud.HudElement;
 import dev.omnicube.client.module.Module;
@@ -18,6 +19,10 @@ import java.util.Set;
  * The single compatibility table. Add a rule here when another mod provides a
  * feature that OmniCube also implements. No optional mod class is referenced:
  * detection is only FabricLoader.isModLoaded(id).
+ *
+ * <p>Rules stay deliberately narrow. A mod is only listed for a feature it really
+ * provides, because a wrong rule greys out a working OmniCube feature without a way
+ * for the user to tell why (the reason is now also written to the diagnostics log).
  */
 public final class CompatRegistry {
 	public record DetectedMod(String id, String name, List<String> featureIds) {
@@ -33,45 +38,49 @@ public final class CompatRegistry {
 	}
 
 	private static final List<Rule> RULES = List.of(
+			// HUD bundles that draw the same counters OmniCube draws.
 			rule("essential", "Essential", "hud_fps", "hud_coords", "hud_server", "hud_ping"),
 			rule("raised", "Raised", "hud_fps", "hud_coords", "hud_server", "hud_ping"),
 			rule("betterhud", "BetterHUD", "hud_fps", "hud_coords", "hud_server"),
-			rule("jade", "Jade", "hud_durability", "hud_armor"),
-			rule("appleskin", "AppleSkin", "hud_durability", "hud_armor"),
-			rule("inspecio", "Inspecio", "tooltips", "hud_durability", "hud_armor"),
+			// Item/container tooltip mods.
+			rule("inspecio", "Inspecio", "tooltips"),
 			rule("shulkerboxtooltip", "Shulker Box Tooltip", "tooltips"),
+			// Zoom mods.
 			rule("logical_zoom", "Logical Zoom", "zoom"),
 			rule("ok_zoomer", "Ok Zoomer", "zoom"),
 			rule("zoomify", "Zoomify", "zoom"),
 			rule("justzoom", "Just Zoom", "zoom"),
+			// Gamma / fullbright mods.
 			rule("gamma_utils", "Gamma Utils", "fullbright"),
 			rule("gammautils", "Gamma Utils", "fullbright"),
 			rule("fullbright", "Fullbright", "fullbright"),
+			// Free look mods.
 			rule("freelook", "Freelook", "free_look"),
 			rule("perspective_mod_redux", "Perspective Mod Redux", "free_look"),
 			rule("perspectivemod", "Perspective Mod", "free_look"),
-			rule("chat_heads", "Chat Heads", "better_chat", "chat_collapse"),
+			// Chat mods that already add timestamps and copying.
 			rule("chatpatches", "Chat Patches", "better_chat", "chat_collapse"),
 			rule("chat_plus", "Chat Plus", "better_chat", "chat_collapse"),
 			rule("chatplus", "Chat Plus", "better_chat", "chat_collapse"),
+			// Auto reconnect mods.
 			rule("auto_reconnect", "Auto Reconnect", "auto_reconnect"),
 			rule("autoreconnect", "Auto Reconnect", "auto_reconnect"),
-			rule("entityculling", "Entity Culling", "entity_culling", "performance"),
-			rule("entity_culling", "Entity Culling", "entity_culling", "performance"),
+			// Entity culling mods.
+			rule("entityculling", "Entity Culling", "entity_culling"),
+			rule("entity_culling", "Entity Culling", "entity_culling"),
+			// Renderer / performance mods that own the same video settings OmniCube's
+			// adaptive backend would change. Mods that do not touch those options
+			// (Iris, Lithium, FerriteCore, ImmediatelyFast, ModernFix, Indium) are
+			// intentionally absent: blocking them would disable a working feature.
 			rule("sodium", "Sodium", "performance"),
 			rule("sodiumextra", "Sodium Extra", "performance"),
 			rule("sodium_extra", "Sodium Extra", "performance"),
 			rule("sodium-extra", "Sodium Extra", "performance"),
 			rule("vulkanmod", "VulkanMod", "performance"),
-			rule("lithium", "Lithium", "performance"),
-			rule("ferritecore", "FerriteCore", "performance"),
-			rule("immediatelyfast", "ImmediatelyFast", "performance"),
-			rule("iris", "Iris", "performance"),
-			rule("indium", "Indium", "performance"),
-			rule("modernfix", "ModernFix", "performance"),
-			rule("dynamic_fps", "Dynamic FPS", "performance"),
 			rule("embeddium", "Embeddium", "performance"),
-			rule("rubidium", "Rubidium", "performance")
+			rule("rubidium", "Rubidium", "performance"),
+			rule("dynamic_fps", "Dynamic FPS", "performance"),
+			rule("optifine", "OptiFine", "performance")
 	);
 
 	private static final List<DetectedMod> DETECTED = new ArrayList<>();
@@ -113,11 +122,23 @@ public final class CompatRegistry {
 				}
 				DISABLED.put(featureId, reason);
 				mod.featureIds().add(featureId);
+				Diagnostics.collisionLine("feature " + featureId + " disabled: provided by "
+						+ rule.displayName() + " (" + rule.modId() + ")");
 			}
 		}
 
 		DETECTED.addAll(detected.values());
 		initialized = true;
+
+		Diagnostics.section("COMPATIBILITY");
+		if (DETECTED.isEmpty()) {
+			Diagnostics.event("compat", "no known overlapping mods detected");
+		} else {
+			for (DetectedMod mod : DETECTED) {
+				Diagnostics.event("compat", mod.name() + " (" + mod.id() + ") -> "
+						+ (mod.featureIds().isEmpty() ? "no conflicting feature" : String.join(", ", mod.featureIds())));
+			}
+		}
 	}
 
 	private static Feature find(List<Feature> features, String id) {
@@ -134,6 +155,7 @@ public final class CompatRegistry {
 			return FabricLoader.getInstance().isModLoaded(modId);
 		} catch (Throwable throwable) {
 			// A broken loader query is never allowed to break startup.
+			Diagnostics.exception("compat." + modId, throwable);
 			OmniCubeMod.LOGGER.debug("[OmniCube] Could not query mod '{}'.", modId, throwable);
 			return false;
 		}

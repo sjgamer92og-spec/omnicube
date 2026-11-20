@@ -1,5 +1,6 @@
 package dev.omnicube.client.hud;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.module.ModuleCategory;
 import net.minecraft.client.Minecraft;
@@ -15,6 +16,8 @@ public abstract class HudElement implements Feature {
 	private static final int PADDING = 3;
 	private static final int LINE_HEIGHT = 10;
 	public static boolean background = true;
+	/** Mirrors the HUD Overlay master switch so reasons can explain hidden elements. */
+	public static boolean masterEnabled = true;
 
 	private final String id;
 	private final String name;
@@ -26,6 +29,8 @@ public abstract class HudElement implements Feature {
 	private boolean defaultEnabled = true;
 	private boolean enabled;
 	private String unavailableReason = "";
+	private String reason = "";
+	private boolean autoDisabled;
 	private int measuredWidth = -1;
 	private int measuredHeight = -1;
 
@@ -38,6 +43,7 @@ public abstract class HudElement implements Feature {
 		this.x = defaultX;
 		this.y = defaultY;
 		this.enabled = true;
+		this.reason = "Enabled (default)";
 	}
 
 	@Override
@@ -75,17 +81,80 @@ public abstract class HudElement implements Feature {
 		return unavailableReason;
 	}
 
+	@Override
+	public String stateReason() {
+		if (!isAvailable()) {
+			return unavailableReason;
+		}
+		if (enabled && !masterEnabled) {
+			return "Hidden: HUD Overlay master switch is off";
+		}
+		return reason;
+	}
+
+	public boolean autoDisabled() {
+		return autoDisabled;
+	}
+
 	public void blockForCompatibility(String reason) {
 		this.unavailableReason = reason == null ? "" : reason;
+		this.reason = this.unavailableReason;
+		this.autoDisabled = true;
 		this.enabled = false;
+		recordState();
 	}
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		if (enabled && !isAvailable()) {
+		applyState(enabled, enabled ? "Enabled" : "Disabled by user", false);
+	}
+
+	/** Changes state with an explicit reason and keeps it out of the saved config. */
+	public void setEnabledAutomatically(boolean enabled, String why) {
+		applyState(enabled, why == null || why.isBlank() ? "Disabled by OmniCube" : why, true);
+	}
+
+	/** Changes state with an explicit reason and saves it like a user choice. */
+	public void setEnabledWithReason(boolean enabled, String why) {
+		applyState(enabled, why == null || why.isBlank() ? "Changed by OmniCube" : why, false);
+	}
+
+	@Override
+	public void markFailed(String reason) {
+		this.enabled = false;
+		this.autoDisabled = true;
+		this.reason = reason == null || reason.isBlank() ? "Failed (see stack trace)" : reason;
+		recordState();
+	}
+
+	private void applyState(boolean newState, String why, boolean automatic) {
+		if (newState && !isAvailable()) {
+			this.reason = unavailableReason;
+			recordState();
 			return;
 		}
-		this.enabled = enabled;
+		boolean changed = newState != enabled;
+		this.enabled = newState;
+		this.reason = why;
+		this.autoDisabled = automatic;
+		recordState();
+		if (changed) {
+			Diagnostics.event("hud", id + " -> " + (enabled ? "ENABLED" : "DISABLED") + " (" + this.reason + ")");
+		}
+	}
+
+	public void recordState() {
+		Diagnostics.status(id, name, "hud", state(), stateReason());
+	}
+
+	private String state() {
+		if (!isAvailable()) {
+			return "BLOCKED";
+		}
+		if (reason != null && reason.startsWith("Failed")) {
+			return "FAILED";
+		}
+		return enabled ? "ENABLED" : "DISABLED";
 	}
 
 	public double x() {

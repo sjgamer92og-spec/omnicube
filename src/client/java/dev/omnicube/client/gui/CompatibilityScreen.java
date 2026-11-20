@@ -80,9 +80,7 @@ public final class CompatibilityScreen extends Screen {
 				next.add("  ! " + conflict);
 			}
 		}
-		if (!dev.omnicube.client.module.impl.PerformanceModule.backendName().equals("builtin")) {
-			next.add("  Performance backend: " + dev.omnicube.client.module.impl.PerformanceModule.backendName());
-		}
+		next.add("  Performance backend: " + dev.omnicube.client.module.impl.PerformanceModule.backendName());
 		lines = next;
 		scroll = clamp(scroll);
 	}

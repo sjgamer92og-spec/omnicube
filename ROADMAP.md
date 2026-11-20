@@ -1,5 +1,13 @@
 # OmniCube roadmap
 
+## Released — v0.2.1 (Minecraft 1.21.11, bug-fix round)
+
+- Diagnostics log (`logs/omnicube-diagnostics.log`), Diagnostics tab and `/omnicube diag`
+- Startup self-check for features, keybinds, screens and mixins
+- Fixed startup registration aborts, the clipped feature list, over-broad compatibility rules and
+  FPS Safety being enabled by default
+- Every caught exception is now logged; feature states carry a specific reason
+
 ## Released — v0.2.0 (Minecraft 1.21.11)
 
 - HUD fixes and normalized layout persistence

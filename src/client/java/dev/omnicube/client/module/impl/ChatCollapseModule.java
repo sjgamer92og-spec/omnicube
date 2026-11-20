@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import net.minecraft.network.chat.Component;
@@ -29,6 +30,7 @@ public final class ChatCollapseModule extends Module {
 		try {
 			key = TIMESTAMP.matcher(message.getString()).replaceFirst("").strip();
 		} catch (Throwable throwable) {
+			Diagnostics.exception("chat_collapse", throwable);
 			return 0;
 		}
 		if (key.isEmpty()) {
@@ -51,11 +53,12 @@ public final class ChatCollapseModule extends Module {
 	}
 
 	public synchronized void fail(String reason, Throwable throwable) {
+		Diagnostics.exception("chat_collapse.hook", throwable);
 		if (!failureLogged) {
 			failureLogged = true;
 			OmniCubeMod.LOGGER.error("[OmniCube] Chat collapse hook failed ({}); disabling it for this session.", reason, throwable);
 		}
-		setEnabled(false);
+		markFailed("Failed: " + Diagnostics.describe(throwable) + " in chat collapse hook (see stack trace)");
 	}
 
 	@Override

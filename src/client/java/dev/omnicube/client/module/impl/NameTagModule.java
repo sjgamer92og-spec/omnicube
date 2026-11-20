@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.render.WorldTextRenderer;
@@ -29,11 +30,12 @@ public final class NameTagModule extends Module {
 	}
 
 	public void fail(Throwable throwable) {
+		Diagnostics.exception("name_tags", throwable);
 		if (!failureLogged) {
 			failureLogged = true;
 			OmniCubeMod.LOGGER.error("[OmniCube] Name tag hook failed; disabling it for this session.", throwable);
 		}
-		setEnabled(false);
+		markFailed("Failed: " + Diagnostics.describe(throwable) + " in NameTagModule (see stack trace)");
 	}
 
 	public boolean shouldReplace(Player player) {
@@ -83,8 +85,9 @@ public final class NameTagModule extends Module {
 
 				Vec3 position = new Vec3(player.getX(), player.getY() + player.getBbHeight() + 0.75D, player.getZ());
 				WorldTextRenderer.draw(context, position, label, 0xFFFFFFFF, scale.get().floatValue());
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// One broken player must not prevent the other name tags from rendering.
+				Diagnostics.exception("name_tags.player", throwable);
 			}
 		}
 	}

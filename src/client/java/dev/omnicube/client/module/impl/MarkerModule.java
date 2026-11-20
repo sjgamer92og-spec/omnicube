@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.render.WorldTextRenderer;
@@ -90,8 +91,9 @@ public final class MarkerModule extends Module {
 							Component.literal(String.format(java.util.Locale.ROOT, "TNT %.1fs", seconds))
 									.withStyle(ChatFormatting.RED),
 							0xFFFFFFFF, 1.0F);
-				} catch (Throwable ignored) {
+				} catch (Throwable throwable) {
 					// Keep rendering the remaining markers.
+					Diagnostics.exception("world_markers.tnt", throwable);
 				}
 			}
 		}
@@ -119,8 +121,9 @@ public final class MarkerModule extends Module {
 				WorldTextRenderer.draw(context, position,
 						Component.literal(waypoint.name).withStyle(ChatFormatting.GREEN),
 						0xFFFFFFFF, 1.2F);
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// A bad waypoint should not break the world render pass.
+				Diagnostics.exception("world_markers.waypoint", throwable);
 			}
 		}
 	}

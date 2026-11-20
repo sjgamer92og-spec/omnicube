@@ -1,6 +1,7 @@
 package dev.omnicube.client.module;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.setting.Setting;
 
@@ -21,6 +22,8 @@ public abstract class Module implements Feature {
 	private final List<Setting<?>> settings = new ArrayList<>();
 	private boolean enabled;
 	private String unavailableReason = "";
+	private String reason = "";
+	private boolean autoDisabled;
 
 	protected Module(String id, String name, String description, ModuleCategory category, boolean defaultEnabled) {
 		this.id = id;
@@ -28,6 +31,7 @@ public abstract class Module implements Feature {
 		this.description = description;
 		this.category = category;
 		this.defaultEnabled = defaultEnabled;
+		this.reason = defaultEnabled ? "Enabled (default)" : "Disabled by user (default)";
 	}
 
 	protected <T extends Setting<?>> T add(T setting) {
@@ -79,39 +83,100 @@ public abstract class Module implements Feature {
 		return unavailableReason;
 	}
 
+	@Override
+	public String stateReason() {
+		if (!isAvailable()) {
+			return unavailableReason;
+		}
+		return reason;
+	}
+
+	/** True when the state was changed by OmniCube (compat, low-end, FPS safety, failure). */
+	public boolean autoDisabled() {
+		return autoDisabled;
+	}
+
 	public void blockForCompatibility(String reason) {
 		this.unavailableReason = reason == null ? "" : reason;
-		if (this.enabled) {
-			setEnabled(false);
-		}
+		this.reason = this.unavailableReason;
+		this.autoDisabled = true;
+		this.enabled = false;
+		recordState();
 	}
 
 	@Override
 	public void setEnabled(boolean newState) {
-		if (newState && !isAvailable()) {
-			return;
-		}
-		if (newState == enabled) {
-			return;
-		}
+		applyState(newState, newState ? "Enabled" : "Disabled by user", false);
+	}
 
+	/** Changes state with an explicit reason and keeps it out of the saved config. */
+	public void setEnabledAutomatically(boolean newState, String why) {
+		applyState(newState, why == null || why.isBlank() ? "Disabled by OmniCube" : why, true);
+	}
+
+	/** Changes state with an explicit reason and saves it like a user choice. */
+	public void setEnabledWithReason(boolean newState, String why) {
+		applyState(newState, why == null || why.isBlank() ? "Changed by OmniCube" : why, false);
+	}
+
+	@Override
+	public void markFailed(String reason) {
+		this.enabled = false;
+		this.autoDisabled = true;
+		this.reason = reason == null || reason.isBlank() ? "Failed (see stack trace)" : reason;
+		recordState();
+	}
+
+	private void applyState(boolean newState, String why, boolean automatic) {
+		if (newState && !isAvailable()) {
+			this.reason = unavailableReason;
+			recordState();
+			return;
+		}
+		boolean changed = newState != enabled;
 		this.enabled = newState;
-		try {
-			if (newState) {
-				onEnable();
-			} else {
-				onDisable();
-			}
-		} catch (Throwable throwable) {
-			this.enabled = false;
-			OmniCubeMod.LOGGER.error("[OmniCube] Module '{}' failed while being {}; it has been disabled.", id,
-					newState ? "enabled" : "disabled", throwable);
+		this.reason = why;
+		this.autoDisabled = automatic;
+		if (changed) {
 			try {
-				onDisable();
-			} catch (Throwable suppress) {
-				OmniCubeMod.LOGGER.warn("[OmniCube] Module '{}' also failed during cleanup.", id, suppress);
+				if (newState) {
+					onEnable();
+				} else {
+					onDisable();
+				}
+			} catch (Throwable throwable) {
+				this.enabled = false;
+				this.autoDisabled = true;
+				this.reason = "Failed: " + Diagnostics.describe(throwable) + " in "
+						+ (newState ? "onEnable()" : "onDisable()") + " (see stack trace)";
+				Diagnostics.exception(id, throwable);
+				OmniCubeMod.LOGGER.error("[OmniCube] Module '{}' failed while being {}; it has been disabled.", id,
+						newState ? "enabled" : "disabled", throwable);
+				try {
+					onDisable();
+				} catch (Throwable suppress) {
+					Diagnostics.exception(id + ".cleanup", suppress);
+					OmniCubeMod.LOGGER.warn("[OmniCube] Module '{}' also failed during cleanup.", id, suppress);
+				}
 			}
 		}
+		recordState();
+		Diagnostics.event("feature", id + " -> " + (enabled ? "ENABLED" : "DISABLED") + " (" + this.reason + ")");
+	}
+
+	/** Writes the current state into the diagnostics feature table without spamming an event. */
+	public void recordState() {
+		Diagnostics.status(id, name, "module", state(), stateReason());
+	}
+
+	private String state() {
+		if (!isAvailable()) {
+			return "BLOCKED";
+		}
+		if (reason != null && reason.startsWith("Failed")) {
+			return "FAILED";
+		}
+		return enabled ? "ENABLED" : "DISABLED";
 	}
 
 	protected void onEnable() {

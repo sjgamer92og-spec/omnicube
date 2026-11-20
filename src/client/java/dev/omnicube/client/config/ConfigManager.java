@@ -3,6 +3,7 @@ package dev.omnicube.client.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.hud.HudManager;
 import dev.omnicube.client.module.ModuleManager;
 import net.fabricmc.loader.api.FabricLoader;
@@ -30,11 +31,28 @@ public final class ConfigManager {
 	 */
 	private static final String LEGACY_BACKUP_SUFFIX = ".pre-omnicube.bak";
 
+	private static volatile String loadSummary = "config load has not run yet";
+	private static volatile boolean usedDefaults;
+
 	private ConfigManager() {
 	}
 
 	public static Path configPath() {
-		return FabricLoader.getInstance().getConfigDir().resolve(CONFIG_FILE);
+		try {
+			return FabricLoader.getInstance().getConfigDir().resolve(CONFIG_FILE);
+		} catch (Throwable throwable) {
+			Diagnostics.exception("config.path", throwable);
+			return Path.of("config", CONFIG_FILE);
+		}
+	}
+
+	/** Human readable result of the last load, shown by diagnostics and /omnicube diag. */
+	public static String loadSummary() {
+		return loadSummary;
+	}
+
+	public static boolean usedDefaults() {
+		return usedDefaults;
 	}
 
 	public static OmniCubeConfig load() {
@@ -43,17 +61,36 @@ public final class ConfigManager {
 		if (Files.exists(path)) {
 			OmniCubeConfig config = read(path);
 			if (config != null) {
+				record("loaded " + path.getFileName(), false);
 				return config;
 			}
 			// A damaged or empty omnicube.json is backed up, then a still-valid
 			// legacy config is used instead of silently dropping the user's setup.
 			backupCorruptFile(path);
 			OmniCubeConfig recovered = loadLegacy(path);
-			return recovered != null ? recovered : new OmniCubeConfig();
+			if (recovered != null) {
+				record(path.getFileName() + " was unreadable; recovered settings from "
+						+ LEGACY_CONFIG_FILE, true);
+				return recovered;
+			}
+			record(path.getFileName() + " was unreadable; backed up and reset to defaults", true);
+			return new OmniCubeConfig();
 		}
 
 		OmniCubeConfig migrated = loadLegacy(path);
-		return migrated != null ? migrated : new OmniCubeConfig();
+		if (migrated != null) {
+			record("migrated " + LEGACY_CONFIG_FILE + " to " + CONFIG_FILE, false);
+			return migrated;
+		}
+		record("no config found; created defaults", true);
+		return new OmniCubeConfig();
+	}
+
+	private static void record(String summary, boolean defaults) {
+		loadSummary = summary;
+		usedDefaults = defaults;
+		Diagnostics.configLine(summary + " (" + configPath() + ")");
+		Diagnostics.event("config", summary);
 	}
 
 	private static OmniCubeConfig loadLegacy(Path target) {
@@ -64,6 +101,7 @@ public final class ConfigManager {
 		OmniCubeConfig migrated = read(legacy);
 		if (migrated == null) {
 			backupCorruptFile(legacy);
+			record(LEGACY_CONFIG_FILE + " was unreadable; backed up and defaults used", true);
 			return null;
 		}
 		migrateLegacy(legacy, target, migrated);
@@ -74,11 +112,13 @@ public final class ConfigManager {
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
 			OmniCubeConfig config = GSON.fromJson(reader, OmniCubeConfig.class);
 			if (config == null) {
+				Diagnostics.configLine(path.getFileName() + " was empty or JSON null");
 				return null;
 			}
 			config.sanitize();
 			return config;
 		} catch (Exception exception) {
+			Diagnostics.exception("config.read", exception);
 			OmniCubeMod.LOGGER.error("[OmniCube] Could not read {}; starting from defaults.", path, exception);
 			return null;
 		}
@@ -89,15 +129,19 @@ public final class ConfigManager {
 
 		try {
 			Files.copy(legacy, backup, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+			Diagnostics.configLine("backed up the legacy config to " + backup.getFileName());
 			OmniCubeMod.LOGGER.info("[OmniCube] Backed up the legacy config to {}.", backup.getFileName());
 		} catch (IOException exception) {
+			Diagnostics.exception("config.migrate.backup", exception);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not back up the legacy config.", exception);
 		}
 
 		try {
 			write(target, config);
+			Diagnostics.configLine("wrote the migrated config to " + target.getFileName());
 			OmniCubeMod.LOGGER.info("[OmniCube] Migrated the legacy config to {}.", target.getFileName());
 		} catch (Exception exception) {
+			Diagnostics.exception("config.migrate.write", exception);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not write the migrated config to {}; it will be retried on the next launch.",
 					target.getFileName(), exception);
 		}
@@ -107,8 +151,10 @@ public final class ConfigManager {
 		try {
 			Path backup = path.resolveSibling(path.getFileName() + ".broken-" + Instant.now().toEpochMilli());
 			Files.copy(path, backup, StandardCopyOption.COPY_ATTRIBUTES);
+			Diagnostics.configLine("unreadable " + path.getFileName() + " copied to " + backup.getFileName());
 			OmniCubeMod.LOGGER.warn("[OmniCube] The unreadable config was copied to {}.", backup.getFileName());
 		} catch (IOException exception) {
+			Diagnostics.exception("config.backup", exception);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not back up the unreadable config.", exception);
 		}
 	}
@@ -122,6 +168,7 @@ public final class ConfigManager {
 			write(path, config);
 		} catch (Throwable throwable) {
 			// A failed save must never break a screen, a tick or the shutdown hook.
+			Diagnostics.exception("config.save", throwable);
 			OmniCubeMod.LOGGER.error("[OmniCube] Could not save the config to {}.", path, throwable);
 		}
 	}
@@ -138,6 +185,7 @@ public final class ConfigManager {
 		try {
 			Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException atomicFailure) {
+			Diagnostics.exception("config.save.atomic", atomicFailure);
 			Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}

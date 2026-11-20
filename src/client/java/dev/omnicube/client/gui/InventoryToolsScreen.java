@@ -1,6 +1,7 @@
 package dev.omnicube.client.gui;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.util.OmniCubeText;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.minecraft.client.Minecraft;
@@ -230,6 +231,7 @@ public final class InventoryToolsScreen extends Screen {
 			selected = null;
 			updateButtons();
 		} catch (Throwable throwable) {
+			Diagnostics.exception("inventory_tools.quick_move", throwable);
 			OmniCubeText.sendError("Quick-move failed; the server rejected the click.");
 		}
 	}

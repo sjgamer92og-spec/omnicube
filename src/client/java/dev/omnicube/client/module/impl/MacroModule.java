@@ -2,6 +2,7 @@ package dev.omnicube.client.module.impl;
 
 import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.macro.Macro;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
@@ -62,6 +63,7 @@ public final class MacroModule extends Module {
 				OmniCubeText.send("Ran macro '" + macro.name + "'");
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("macros.run", throwable);
 			OmniCubeText.sendError("Macro '" + macro.name + "' could not be sent.");
 		}
 	}

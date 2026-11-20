@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.gui.OmniCubeScreen;
 import dev.omnicube.client.gui.ChatSearchScreen;
@@ -65,6 +66,7 @@ public final class OmniCubeCommands {
 						.then(ClientCommandManager.literal("hud").executes(context -> openHudEditor(context.getSource())))
 						.then(ClientCommandManager.literal("list").executes(context -> list(context.getSource())))
 						.then(ClientCommandManager.literal("compat").executes(context -> compat(context.getSource())))
+						.then(ClientCommandManager.literal("diag").executes(context -> diagnostics(context.getSource())))
 						.then(ClientCommandManager.literal("perf").executes(context -> perf(context.getSource())))
 						.then(ClientCommandManager.literal("chatsearch").executes(context -> chatSearch(context.getSource())))
 						.then(ClientCommandManager.literal("lowend").executes(context -> lowEnd(context.getSource())))
@@ -173,6 +175,17 @@ public final class OmniCubeCommands {
 		return 1;
 	}
 
+	private static int diagnostics(FabricClientCommandSource source) {
+		source.sendFeedback(Component.literal("[OmniCube] Diagnostics")
+				.withStyle(ChatFormatting.GREEN));
+		for (String line : Diagnostics.summaryLines()) {
+			source.sendFeedback(Component.literal("  " + line).withStyle(ChatFormatting.GRAY));
+		}
+		source.sendFeedback(Component.literal("  Copy the full report with the Diagnostics tab -> Copy report")
+				.withStyle(ChatFormatting.DARK_GRAY));
+		return 1;
+	}
+
 	private static int perf(FabricClientCommandSource source) {
 		PerfMonitor.enable();
 		List<String> lines = PerfMonitor.summary();
@@ -183,8 +196,10 @@ public final class OmniCubeCommands {
 		}
 		source.sendFeedback(Component.literal("[OmniCube] Client callback timings (not GPU):")
 				.withStyle(ChatFormatting.GREEN));
+		Diagnostics.section("PROFILER SNAPSHOT");
 		for (String line : lines) {
 			source.sendFeedback(Component.literal("  " + line).withStyle(ChatFormatting.GRAY));
+			Diagnostics.performance(line);
 		}
 		return 1;
 	}
@@ -242,6 +257,7 @@ public final class OmniCubeCommands {
 			source.sendFeedback(Component.literal("[OmniCube] Opened " + folder).withStyle(ChatFormatting.GREEN));
 			return 1;
 		} catch (Throwable throwable) {
+			Diagnostics.exception("command.screenshots", throwable);
 			source.sendError(Component.literal("Could not open the screenshots folder."));
 			return 0;
 		}

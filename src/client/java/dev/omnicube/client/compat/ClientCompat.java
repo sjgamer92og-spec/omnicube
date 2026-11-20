@@ -1,5 +1,6 @@
 package dev.omnicube.client.compat;
 
+import dev.omnicube.client.diag.Diagnostics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -30,6 +31,7 @@ public final class ClientCompat {
 		try {
 			return org.lwjgl.glfw.GLFW.glfwGetKey(windowHandle(), keyCode) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
 		} catch (Throwable throwable) {
+			Diagnostics.exception("client.key_state", throwable);
 			return false;
 		}
 	}
@@ -38,6 +40,7 @@ public final class ClientCompat {
 		try {
 			return org.lwjgl.glfw.GLFW.glfwGetMouseButton(windowHandle(), button) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
 		} catch (Throwable throwable) {
+			Diagnostics.exception("client.mouse_state", throwable);
 			return false;
 		}
 	}
@@ -46,6 +49,7 @@ public final class ClientCompat {
 		try {
 			net.minecraft.util.Util.getPlatform().openFile(file);
 		} catch (Throwable throwable) {
+			Diagnostics.exception("client.open_file", throwable);
 			dev.omnicube.OmniCubeMod.LOGGER.warn("[OmniCube] Could not open {}", file, throwable);
 		}
 	}

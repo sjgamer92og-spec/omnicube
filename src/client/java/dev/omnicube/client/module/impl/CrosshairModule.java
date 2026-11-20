@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -53,8 +54,9 @@ public final class CrosshairModule extends Module {
 					graphics.fill(centerX, centerY + gap, centerX + 1, centerY + half, color);
 				}
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// The vanilla crosshair remains the fallback if custom drawing fails.
+			Diagnostics.exception("render.crosshair", throwable);
 		}
 	}
 

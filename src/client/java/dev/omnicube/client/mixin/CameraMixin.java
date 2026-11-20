@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.FreeLookModule;
 import net.minecraft.client.Camera;
 import net.minecraft.world.entity.Entity;
@@ -26,6 +27,7 @@ public abstract class CameraMixin {
 			}
 		} catch (Throwable throwable) {
 			// A broken camera hook must leave the vanilla camera untouched.
+			Diagnostics.exception("free_look.camera", throwable);
 			FreeLookModule module = OmniCubeClient.freeLook();
 			if (module != null) {
 				module.fail(throwable);

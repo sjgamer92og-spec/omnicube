@@ -1,6 +1,7 @@
 package dev.omnicube.client.render;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import dev.omnicube.client.diag.Diagnostics;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Minecraft;
@@ -35,8 +36,9 @@ public final class WorldTextRenderer {
 			font.drawInBatch(text, -font.width(text) / 2.0F, -font.lineHeight / 2.0F, color, true,
 					matrices.last().pose(), consumers, displayMode, 0, 0xF000F0);
 			matrices.popPose();
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// A bad entity or render state must not break the world render pass.
+			Diagnostics.exception("world_text.draw", throwable);
 		}
 	}
 
@@ -60,8 +62,9 @@ public final class WorldTextRenderer {
 				consumer.addVertex(pose, x + dx, y, z + dz).setColor(color).setNormal(0.0F, 1.0F, 0.0F);
 				consumer.addVertex(pose, x + dx, y + top, z + dz).setColor(color).setNormal(0.0F, 1.0F, 0.0F);
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Lines are optional decoration; labels still render if this fails.
+			Diagnostics.exception("world_text.beam", throwable);
 		}
 	}
 }

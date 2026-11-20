@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -30,8 +31,9 @@ public final class FlySpeedModule extends Module {
 			if (Math.abs(player.getAbilities().getFlyingSpeed() - target) > 0.0001F) {
 				player.getAbilities().setFlyingSpeed(target);
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Abilities can be swapped out by the server at any time.
+			Diagnostics.exception("fly_speed", throwable);
 		}
 	}
 
@@ -44,8 +46,9 @@ public final class FlySpeedModule extends Module {
 		}
 		try {
 			player.getAbilities().setFlyingSpeed(originalFlySpeed == null ? VANILLA_FLY_SPEED : originalFlySpeed);
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Nothing to restore if the player is gone.
+			Diagnostics.exception("fly_speed.restore", throwable);
 		} finally {
 			originalFlySpeed = null;
 		}

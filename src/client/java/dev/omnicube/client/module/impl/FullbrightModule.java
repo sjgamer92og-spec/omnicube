@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -15,11 +16,20 @@ public final class FullbrightModule extends Module {
 
 	@Override
 	protected void onEnable() {
-		Minecraft client = Minecraft.getInstance();
-		if (originalGamma == null) {
-			originalGamma = client.options.gamma().get();
+		// Enabling happens while the config is read, which can be before the client is
+		// fully constructed; never let that turn into a startup failure.
+		try {
+			Minecraft client = Minecraft.getInstance();
+			if (client == null || client.options == null) {
+				return;
+			}
+			if (originalGamma == null) {
+				originalGamma = client.options.gamma().get();
+			}
+			apply(client);
+		} catch (Throwable throwable) {
+			Diagnostics.exception("fullbright.enable", throwable);
 		}
-		apply(client);
 	}
 
 	@Override
@@ -38,8 +48,9 @@ public final class FullbrightModule extends Module {
 			if (Math.abs(client.options.gamma().get() - target) > 0.001D) {
 				client.options.gamma().set(target);
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Options can be unavailable during very early startup; the next tick retries.
+			Diagnostics.exception("fullbright.apply", throwable);
 		}
 	}
 
@@ -49,8 +60,9 @@ public final class FullbrightModule extends Module {
 		}
 		try {
 			Minecraft.getInstance().options.gamma().set(originalGamma);
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Nothing sensible to do if options are already torn down.
+			Diagnostics.exception("fullbright.restore", throwable);
 		} finally {
 			originalGamma = null;
 		}

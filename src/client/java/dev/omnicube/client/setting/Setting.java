@@ -2,6 +2,7 @@ package dev.omnicube.client.setting;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
+import dev.omnicube.client.diag.Diagnostics;
 
 import java.util.List;
 
@@ -75,8 +76,9 @@ public abstract class Setting<T> {
 				if (json != null && json.isJsonPrimitive()) {
 					set(json.getAsBoolean());
 				}
-			} catch (RuntimeException ignored) {
+			} catch (RuntimeException exception) {
 				// A malformed value falls back to the default instead of breaking the config.
+				Diagnostics.exception("setting.bool", exception);
 			}
 		}
 
@@ -135,8 +137,9 @@ public abstract class Setting<T> {
 						set(json.getAsString());
 					}
 				}
-			} catch (RuntimeException ignored) {
+			} catch (RuntimeException exception) {
 				// Keep the default on malformed input.
+				Diagnostics.exception("setting.choice", exception);
 			}
 		}
 
@@ -206,8 +209,9 @@ public abstract class Setting<T> {
 				if (json != null && json.isJsonPrimitive()) {
 					set(json.getAsDouble());
 				}
-			} catch (RuntimeException ignored) {
+			} catch (RuntimeException exception) {
 				// Keep the default on malformed input.
+				Diagnostics.exception("setting.number", exception);
 			}
 		}
 

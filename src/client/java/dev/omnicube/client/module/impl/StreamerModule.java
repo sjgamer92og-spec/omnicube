@@ -1,5 +1,6 @@
 package dev.omnicube.client.module.impl;
 
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -66,8 +67,9 @@ public final class StreamerModule extends Module {
 					result = result.replace(server, "[server hidden]");
 				}
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Redaction must never drop a chat message.
+			Diagnostics.exception("streamer.redact", throwable);
 		}
 		return result;
 	}
@@ -78,8 +80,9 @@ public final class StreamerModule extends Module {
 			if (client.getCurrentServer() != null && client.getCurrentServer().ip != null) {
 				return client.getCurrentServer().ip;
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// Not connected or the server list is unavailable.
+			Diagnostics.exception("streamer.server", throwable);
 		}
 		return "";
 	}

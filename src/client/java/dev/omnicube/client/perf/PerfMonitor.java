@@ -1,5 +1,7 @@
 package dev.omnicube.client.perf;
 
+import dev.omnicube.client.diag.Diagnostics;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -36,8 +38,9 @@ public final class PerfMonitor {
 		}
 		try {
 			SAMPLES.computeIfAbsent(id, ignored -> new Sample()).add(System.nanoTime() - startNanos);
-		} catch (Throwable ignored) {
-			// Profiling must never affect gameplay.
+		} catch (Throwable throwable) {
+			// Profiling must never affect gameplay, but it is still recorded.
+			Diagnostics.exception("perf.record", throwable);
 		}
 	}
 

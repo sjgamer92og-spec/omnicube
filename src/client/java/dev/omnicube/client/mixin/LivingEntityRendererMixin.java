@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.NameTagModule;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.world.entity.LivingEntity;
@@ -22,6 +23,7 @@ public abstract class LivingEntityRendererMixin {
 			}
 		} catch (Throwable throwable) {
 			// Leave vanilla name tags visible if the module state is unavailable.
+			Diagnostics.exception("name_tags.hook", throwable);
 			NameTagModule module = OmniCubeClient.nameTags();
 			if (module != null) {
 				module.fail(throwable);

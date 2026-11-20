@@ -1,5 +1,6 @@
 package dev.omnicube.client.macro;
 
+import dev.omnicube.client.diag.Diagnostics;
 import org.lwjgl.glfw.GLFW;
 
 public final class Macro {
@@ -36,7 +37,8 @@ public final class Macro {
 		try {
 			String name = GLFW.glfwGetKeyName(key, 0);
 			return name == null ? "key " + key : name.toUpperCase(java.util.Locale.ROOT);
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
+			Diagnostics.exception("macro.key_name", throwable);
 			return "key " + key;
 		}
 	}

@@ -2,6 +2,7 @@ package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.config.OmniCubeConfig;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
@@ -68,6 +69,7 @@ public final class ChatLogModule extends Module {
 			path = FabricLoader.getInstance().getGameDir().resolve("logs").resolve("omnicube-chat.log");
 		} catch (Throwable throwable) {
 			WRITE_FAILED.set(true);
+			Diagnostics.exception("chat_log.path", throwable);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Could not resolve the chat log path; chat logging is disabled.", throwable);
 			return;
 		}
@@ -87,10 +89,11 @@ public final class ChatLogModule extends Module {
 						StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 			} catch (Throwable throwable) {
 				WRITE_FAILED.set(true);
+				Diagnostics.exception("chat_log.write", throwable);
 				OmniCubeMod.LOGGER.warn("[OmniCube] Chat logging failed; disabling the chat log module.", throwable);
 				ChatLogModule module = OmniCubeClient.chatLog();
 				if (module != null) {
-					module.setEnabled(false);
+					module.markFailed("Failed: " + Diagnostics.describe(throwable) + " while writing the chat log");
 				}
 				return;
 			}

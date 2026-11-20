@@ -1,6 +1,7 @@
 package dev.omnicube.client.mixin;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.impl.EntityCullingModule;
 import dev.omnicube.client.perf.PerfMonitor;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -24,6 +25,7 @@ public abstract class EntityRenderDispatcherMixin {
 			}
 		} catch (Throwable throwable) {
 			// A failed optional hook must never crash rendering.
+			Diagnostics.exception("entity_culling.hook", throwable);
 			EntityCullingModule module = OmniCubeClient.entityCulling();
 			if (module != null) {
 				module.fail(throwable);

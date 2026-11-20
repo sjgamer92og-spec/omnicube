@@ -1,6 +1,7 @@
 package dev.omnicube.client.config;
 
 import com.google.gson.JsonObject;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.macro.Macro;
 import dev.omnicube.client.waypoint.Waypoint;
 
@@ -64,7 +65,8 @@ public final class OmniCubeConfig {
 	public int accentArgb() {
 		try {
 			return 0xFF000000 | Integer.parseInt(accent.substring(1), 16);
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException exception) {
+			Diagnostics.exception("config.accent", exception);
 			return 0xFF7ED957;
 		}
 	}

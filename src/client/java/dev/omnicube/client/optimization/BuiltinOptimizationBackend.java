@@ -1,6 +1,7 @@
 package dev.omnicube.client.optimization;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -43,6 +44,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 			OmniCubeMod.LOGGER.info("[OmniCube] Performance: captured video settings (rd={}, particles={}, clouds={}, entityDistance={})",
 					originalRenderDistance, originalParticles, originalClouds, originalEntityDistance);
 		} catch (Throwable throwable) {
+			Diagnostics.exception("performance.capture", throwable);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Performance: could not capture video settings.", throwable);
 		}
 	}
@@ -67,6 +69,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 				options.entityDistanceScaling().set(originalEntityDistance);
 			}
 		} catch (Throwable throwable) {
+			Diagnostics.exception("performance.restore", throwable);
 			OmniCubeMod.LOGGER.warn("[OmniCube] Performance: could not restore video settings.", throwable);
 		} finally {
 			captured = false;
@@ -85,6 +88,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 		try {
 			fps = client.getFps();
 		} catch (Throwable throwable) {
+			Diagnostics.exception("performance.fps", throwable);
 			return;
 		}
 		if (fps <= 0) {
@@ -113,6 +117,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 					options.particles().set(desired);
 				}
 			} catch (Throwable throwable) {
+				Diagnostics.exception("performance.particles", throwable);
 				OmniCubeMod.LOGGER.debug("[OmniCube] Performance: particle adjustment failed.", throwable);
 			}
 		}
@@ -124,6 +129,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 					options.cloudStatus().set(desired);
 				}
 			} catch (Throwable throwable) {
+				Diagnostics.exception("performance.clouds", throwable);
 				OmniCubeMod.LOGGER.debug("[OmniCube] Performance: cloud adjustment failed.", throwable);
 			}
 		}
@@ -135,6 +141,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 					options.entityDistanceScaling().set(desired);
 				}
 			} catch (Throwable throwable) {
+				Diagnostics.exception("performance.entity_distance", throwable);
 				OmniCubeMod.LOGGER.debug("[OmniCube] Performance: entity distance adjustment failed.", throwable);
 			}
 		}
@@ -156,6 +163,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 					lastRenderDistance = options.renderDistance().get();
 				}
 			} catch (Throwable throwable) {
+				Diagnostics.exception("performance.render_distance", throwable);
 				OmniCubeMod.LOGGER.debug("[OmniCube] Performance: render-distance adjustment failed.", throwable);
 			}
 		}

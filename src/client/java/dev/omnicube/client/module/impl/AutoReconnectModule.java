@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -43,8 +44,9 @@ public final class AutoReconnectModule extends Module {
 				address = server.ip;
 				multiplayerSession = true;
 			}
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
 			// The next join will try again.
+			Diagnostics.exception("auto_reconnect.remember", throwable);
 		}
 	}
 

@@ -3,6 +3,7 @@ package dev.omnicube.client.module;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.omnicube.OmniCubeMod;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.perf.PerfMonitor;
 import dev.omnicube.client.setting.Setting;
@@ -18,11 +19,11 @@ import java.util.Map;
 public final class ModuleManager {
 	private final List<Module> modules = new ArrayList<>();
 	private final Map<String, Module> byId = new LinkedHashMap<>();
-	private boolean errorLogged;
 
 	public void register(Module module) {
 		if (byId.containsKey(module.id())) {
 			OmniCubeMod.LOGGER.warn("[OmniCube] Duplicate module id '{}' ignored.", module.id());
+			Diagnostics.event("registry", "duplicate module id ignored: " + module.id());
 			return;
 		}
 		modules.add(module);
@@ -46,12 +47,13 @@ public final class ModuleManager {
 			try {
 				module.tick();
 			} catch (Throwable throwable) {
-				// Never let one module break the client tick loop.
-				module.setEnabled(false);
-				if (!errorLogged) {
-					errorLogged = true;
-					OmniCubeMod.LOGGER.error("[OmniCube] Module '{}' threw during tick and was disabled.", module.id(), throwable);
-				}
+				// Never let one module break the client tick loop, but always log the
+				// complete failure so it is never swallowed.
+				String reason = "Failed: " + Diagnostics.describe(throwable) + " in " + module.id()
+						+ ".tick() (see stack trace)";
+				module.markFailed(reason);
+				Diagnostics.exception(module.id(), throwable);
+				OmniCubeMod.LOGGER.error("[OmniCube] Module '{}' threw during tick and was disabled.", module.id(), throwable);
 			} finally {
 				PerfMonitor.record("tick." + module.id(), started);
 			}
@@ -60,9 +62,10 @@ public final class ModuleManager {
 
 	public void write(JsonObject root) {
 		for (Module module : modules) {
-			// Preserve the user's previous enabled state while a feature is
-			// temporarily blocked by another mod. Removing that mod can restore it.
-			if (!module.isAvailable()) {
+			// Preserve the user's previous enabled state while a feature is temporarily
+			// blocked by another mod or disabled by the low-end/FPS safety path. Leaving
+			// the previous entry untouched is what makes that state restorable.
+			if (!module.isAvailable() || module.autoDisabled()) {
 				continue;
 			}
 			JsonObject entry = new JsonObject();
@@ -93,9 +96,10 @@ public final class ModuleManager {
 						if (raw != null) {
 							try {
 								setting.fromJson(raw);
-							} catch (RuntimeException ignored) {
+							} catch (RuntimeException exception) {
 								// Keep this setting's default instead of failing the whole config load.
 								setting.reset();
+								Diagnostics.exception(module.id() + "." + setting.id() + ".config", exception);
 							}
 						}
 					}
@@ -103,15 +107,26 @@ public final class ModuleManager {
 				if (entry.has("enabled")) {
 					try {
 						module.setEnabled(entry.get("enabled").getAsBoolean());
-					} catch (RuntimeException ignored) {
+					} catch (RuntimeException exception) {
 						module.setEnabled(module.defaultEnabled());
+						Diagnostics.exception(module.id() + ".config", exception);
 					}
 				} else {
-					module.setEnabled(module.defaultEnabled());
+					// Defaults are saved like a user choice so the first config file lists
+					// every module instead of omitting the ones the user never touched.
+					module.setEnabledWithReason(module.defaultEnabled(),
+							module.defaultEnabled() ? "Enabled (default)" : "Disabled (default)");
 				}
 			} else {
-				module.setEnabled(module.defaultEnabled());
+				module.setEnabledWithReason(module.defaultEnabled(),
+						module.defaultEnabled() ? "Enabled (default)" : "Disabled (default)");
 			}
+		}
+	}
+
+	public void recordAllStates() {
+		for (Module module : modules) {
+			module.recordState();
 		}
 	}
 

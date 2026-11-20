@@ -1,6 +1,8 @@
 package dev.omnicube.client.gui;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.util.OmniCubeText;
@@ -20,14 +22,22 @@ public final class OmniCubeScreen extends Screen {
 	private static final int ROW_HEIGHT = 24;
 	private static final int ROW_GAP = 2;
 	private static final int HEADER_HEIGHT = 46;
+	private static final int TAB_FEATURES = 0;
+	private static final int TAB_DIAGNOSTICS = 1;
 
 	private final Screen parent;
 	private String query = "";
 	private ModuleCategory category;
 	private int scroll;
+	private int tab = TAB_FEATURES;
 	private EditBox search;
 	private List<Feature> visible = new ArrayList<>();
+	private List<Diagnostics.FeatureRecord> diagnostics = new ArrayList<>();
 	private int keybindConflicts;
+
+	private Button openLogButton;
+	private Button copyReportButton;
+	private Button refreshDiagnosticsButton;
 
 	public OmniCubeScreen(Screen parent) {
 		super(Component.literal("OmniCube"));
@@ -51,7 +61,7 @@ public final class OmniCubeScreen extends Screen {
 		int footerY = this.height - 27;
 		int doneWidth = Math.min(60, Math.max(30, this.width / 5));
 		int doneX = this.width - doneWidth - 10;
-		int buttonWidth = Math.max(12, Math.min(96, (doneX - 22) / 4));
+		int buttonWidth = Math.max(24, Math.min(96, (doneX - 14) / 4 - 4));
 		int buttonX = 10;
 
 		addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
@@ -78,13 +88,53 @@ public final class OmniCubeScreen extends Screen {
 		addRenderableWidget(Button.builder(Component.literal("Reload"), button -> {
 			OmniCubeClient.reloadConfig();
 			refresh();
+			refreshDiagnostics();
 		}).bounds(buttonX, footerY, buttonWidth, 20).build());
 
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
 				.bounds(doneX, footerY, doneWidth, 20).build());
 
+		// Diagnostics-only actions. They share the footer space with the feature actions
+		// and are shown only on the Diagnostics tab.
+		int logWidth = Math.max(60, Math.min(110, (doneX - 20) / 3 - 4));
+		openLogButton = addRenderableWidget(Button.builder(Component.literal("Open log folder"), button -> {
+			try {
+				ClientCompat.openFile(Diagnostics.logDirectory().toFile());
+			} catch (Throwable throwable) {
+				Diagnostics.exception("gui.open_log", throwable);
+				OmniCubeText.sendError("Could not open the log folder.");
+			}
+		}).bounds(10, footerY, logWidth, 20).build());
+		copyReportButton = addRenderableWidget(Button.builder(Component.literal("Copy report"), button -> {
+			OmniCubeText.copyToClipboard(Diagnostics.report());
+			OmniCubeText.send("Diagnostics report copied.");
+		}).bounds(14 + logWidth, footerY, logWidth, 20).build());
+		refreshDiagnosticsButton = addRenderableWidget(Button.builder(Component.literal("Refresh"), button -> {
+			refreshDiagnostics();
+			refresh();
+		}).bounds(18 + logWidth * 2, footerY, Math.max(40, Math.min(80, doneX - (22 + logWidth * 2))), 20).build());
+
 		refresh();
+		refreshDiagnostics();
+		updateTabVisibility();
 		keybindConflicts = dev.omnicube.client.keybind.KeybindConflicts.find().size();
+	}
+
+	private void updateTabVisibility() {
+		boolean features = tab == TAB_FEATURES;
+		if (search != null) {
+			search.visible = features;
+			search.setFocused(features && search.isFocused());
+		}
+		if (openLogButton != null) {
+			openLogButton.visible = !features;
+		}
+		if (copyReportButton != null) {
+			copyReportButton.visible = !features;
+		}
+		if (refreshDiagnosticsButton != null) {
+			refreshDiagnosticsButton.visible = !features;
+		}
 	}
 
 	private void refresh() {
@@ -104,6 +154,11 @@ public final class OmniCubeScreen extends Screen {
 			filtered.add(feature);
 		}
 		visible = filtered;
+		scroll = clampScroll(scroll);
+	}
+
+	private void refreshDiagnostics() {
+		diagnostics = new ArrayList<>(Diagnostics.features());
 		scroll = clampScroll(scroll);
 	}
 
@@ -132,6 +187,9 @@ public final class OmniCubeScreen extends Screen {
 	}
 
 	private int contentHeight() {
+		if (tab == TAB_DIAGNOSTICS) {
+			return diagnostics.size() * 22 + 26;
+		}
 		return visible.size() * (ROW_HEIGHT + ROW_GAP);
 	}
 
@@ -149,7 +207,7 @@ public final class OmniCubeScreen extends Screen {
 
 		graphics.drawString(this.font, "OMNICUBE", 12, 13, accent, true);
 		graphics.drawString(this.font, "Minecraft 1.21.11", 12, 24, 0xFF8A8A8A, false);
-		graphics.drawString(this.font, "All-in-one toolkit", 12, 34, 0xFF6F6F6F, false);
+		graphics.drawString(this.font, "0.2.1", 12, 34, 0xFF6F6F6F, false);
 
 		drawCategory(graphics, "All", null, 54, mouseX, mouseY);
 		int y = 54 + 19;
@@ -158,8 +216,7 @@ public final class OmniCubeScreen extends Screen {
 			y += 19;
 		}
 
-		String count = visible.size() + " features";
-		graphics.drawString(this.font, this.title.copy().append(Component.literal("  •  " + count)), listX(), 8, 0xFFEDEDED, true);
+		drawTabs(graphics, mouseX, mouseY, accent);
 
 		int listX = listX();
 		int listW = listWidth();
@@ -168,14 +225,19 @@ public final class OmniCubeScreen extends Screen {
 		graphics.fill(listX - 2, top - 2, listX + listW + 2, bottom + 2, 0x88101010);
 
 		graphics.enableScissor(listX, top, listX + listW, bottom);
-		int rowY = top - scroll;
-		for (Feature feature : visible) {
-			if (rowY + ROW_HEIGHT >= top - ROW_HEIGHT && rowY <= bottom + ROW_HEIGHT) {
-				drawFeatureRow(graphics, feature, listX, rowY, listW, mouseX, mouseY, accent);
+		try {
+			if (tab == TAB_FEATURES) {
+				renderFeatureRows(graphics, listX, listW, top, bottom, mouseX, mouseY, accent);
+			} else {
+				renderDiagnosticsRows(graphics, listX, listW, top, bottom);
 			}
-			rowY += ROW_HEIGHT + ROW_GAP;
+		} catch (Throwable throwable) {
+			// A single malformed row must not leave the scissor enabled and blank the rest
+			// of the screen, which is what made the list look empty before.
+			Diagnostics.exception("gui.list_render", throwable);
+		} finally {
+			graphics.disableScissor();
 		}
-		graphics.disableScissor();
 
 		if (contentHeight() > listHeight()) {
 			int trackHeight = listHeight();
@@ -187,19 +249,97 @@ public final class OmniCubeScreen extends Screen {
 
 		super.render(graphics, mouseX, mouseY, partialTick);
 
-		Feature hovered = featureAt(mouseX, mouseY);
-		if (hovered != null) {
-			String tooltip = hovered.isAvailable() ? hovered.description() : hovered.unavailableReason();
-			graphics.setTooltipForNextFrame(this.font, Component.literal(tooltip), mouseX, mouseY);
+		if (tab == TAB_FEATURES) {
+			Feature hovered = featureAt(mouseX, mouseY);
+			if (hovered != null) {
+				String tooltip = hovered.description();
+				String reason = hovered.stateReason();
+				if (!hovered.isAvailable() || !reason.isBlank()) {
+					tooltip = reason;
+					if (!hovered.isAvailable()) {
+						tooltip = hovered.unavailableReason();
+					}
+				}
+				graphics.setTooltipForNextFrame(this.font, Component.literal(tooltip), mouseX, mouseY);
+			}
 		}
+
 		if (keybindConflicts > 0) {
 			graphics.drawString(this.font, "! " + keybindConflicts + " keybind conflict(s) - see Compatibility",
 					10, this.height - 40, 0xFFFFAA55, false);
 		}
 	}
 
+	private void renderFeatureRows(GuiGraphics graphics, int listX, int listW, int top, int bottom,
+			int mouseX, int mouseY, int accent) {
+		int rowY = top - scroll;
+		for (Feature feature : visible) {
+			if (rowY + ROW_HEIGHT >= top - ROW_HEIGHT && rowY <= bottom + ROW_HEIGHT) {
+				try {
+					drawFeatureRow(graphics, feature, listX, rowY, listW, mouseX, mouseY, accent);
+				} catch (Throwable throwable) {
+					Diagnostics.exception("gui.feature_row." + feature.id(), throwable);
+				}
+			}
+			rowY += ROW_HEIGHT + ROW_GAP;
+		}
+		if (visible.isEmpty()) {
+			graphics.drawString(this.font, "No feature matches this filter.", listX + 8, top + 8, 0xFFAAAAAA, false);
+		}
+	}
+
+	private void renderDiagnosticsRows(GuiGraphics graphics, int listX, int listW, int top, int bottom) {
+		int y = top - scroll;
+		graphics.drawString(this.font, "Diagnostics: " + diagnostics.size() + " features, "
+				+ Diagnostics.exceptionCount() + " exception(s)", listX + 4, y, 0xFFFFFFFF, true);
+		graphics.drawString(this.font, "Log: " + Diagnostics.logPath(), listX + 4, y + 11, 0xFF888888, false);
+		y += 26;
+		if (diagnostics.isEmpty()) {
+			graphics.drawString(this.font, "No feature status recorded.", listX + 4, y, 0xFFAAAAAA, false);
+			return;
+		}
+		for (Diagnostics.FeatureRecord record : diagnostics) {
+			if (y + 20 >= top && y <= bottom) {
+				int color = switch (record.state()) {
+					case "ENABLED" -> 0xFF7ED957;
+					case "BLOCKED" -> 0xFFFFAA55;
+					case "FAILED" -> 0xFFFF6666;
+					default -> 0xFF9A9A9A;
+				};
+				String line = record.name() + "  [" + record.state() + "]";
+				graphics.drawString(this.font, this.font.plainSubstrByWidth(line, listW - 8), listX + 4, y, color, false);
+				String reason = record.reason().isBlank() ? "-" : record.reason();
+				graphics.drawString(this.font, this.font.plainSubstrByWidth(reason, listW - 8), listX + 8, y + 9,
+						0xFFB0B0B0, false);
+			}
+			y += 22;
+		}
+	}
+
+	private void drawTabs(GuiGraphics graphics, int mouseX, int mouseY, int accent) {
+		int x = listX();
+		int featuresWidth = 62;
+		int diagWidth = 78;
+		boolean featureHover = mouseX >= x && mouseX < x + featuresWidth && mouseY >= 6 && mouseY <= 20;
+		boolean diagHover = mouseX >= x + featuresWidth + 4 && mouseX < x + featuresWidth + 4 + diagWidth
+				&& mouseY >= 6 && mouseY <= 20;
+		graphics.fill(x, 6, x + featuresWidth, 20,
+				tab == TAB_FEATURES ? 0x447ED957 : featureHover ? 0x22FFFFFF : 0x00000000);
+		graphics.fill(x + featuresWidth + 4, 6, x + featuresWidth + 4 + diagWidth, 20,
+				tab == TAB_DIAGNOSTICS ? 0x447ED957 : diagHover ? 0x22FFFFFF : 0x00000000);
+		graphics.drawString(this.font, "Features", x + 6, 9, tab == TAB_FEATURES ? 0xFFFFFFFF : 0xFFB0B0B0, false);
+		graphics.drawString(this.font, "Diagnostics", x + featuresWidth + 10, 9,
+				tab == TAB_DIAGNOSTICS ? 0xFFFFFFFF : 0xFFB0B0B0, false);
+
+		String count = tab == TAB_FEATURES
+				? visible.size() + " features"
+				: Diagnostics.failedFeatures() + " failed";
+		graphics.drawString(this.font, count, this.width - 10 - this.font.width(count), 9,
+				tab == TAB_FEATURES ? 0xFFEDEDED : 0xFFFFAA55, false);
+	}
+
 	private void drawCategory(GuiGraphics graphics, String label, ModuleCategory value, int y, int mouseX, int mouseY) {
-		boolean selected = category == value;
+		boolean selected = tab == TAB_FEATURES && category == value;
 		int sidebar = sidebarWidth();
 		boolean hovered = mouseX >= 4 && mouseX <= sidebar - 4 && mouseY >= y && mouseY <= y + 17;
 		int background = selected ? 0x447ED957 : hovered ? 0x22FFFFFF : 0x00000000;
@@ -243,6 +383,9 @@ public final class OmniCubeScreen extends Screen {
 	}
 
 	private Feature featureAt(double mouseX, double mouseY) {
+		if (tab != TAB_FEATURES) {
+			return null;
+		}
 		int listX = listX();
 		int listW = listWidth();
 		if (mouseX < listX || mouseX >= listX + listW || mouseY < listTop() || mouseY >= listBottom()) {
@@ -271,9 +414,22 @@ public final class OmniCubeScreen extends Screen {
 		double mouseX = event.x();
 		double mouseY = event.y();
 
+		if (mouseY >= 6 && mouseY <= 20) {
+			int x = listX();
+			if (mouseX >= x && mouseX < x + 62) {
+				setTab(TAB_FEATURES);
+				return true;
+			}
+			if (mouseX >= x + 66 && mouseX < x + 66 + 78) {
+				setTab(TAB_DIAGNOSTICS);
+				return true;
+			}
+		}
+
 		if (mouseX >= 4 && mouseX <= sidebarWidth() - 4) {
 			if (mouseY >= 54 && mouseY < 71) {
 				category = null;
+				scroll = 0;
 				refresh();
 				return true;
 			}
@@ -314,6 +470,18 @@ public final class OmniCubeScreen extends Screen {
 		feature.setEnabled(!feature.isEnabled());
 		OmniCubeClient.saveConfig();
 		return true;
+	}
+
+	private void setTab(int newTab) {
+		if (tab == newTab) {
+			return;
+		}
+		tab = newTab;
+		scroll = 0;
+		if (newTab == TAB_DIAGNOSTICS) {
+			refreshDiagnostics();
+		}
+		updateTabVisibility();
 	}
 
 	@Override

@@ -1,5 +1,6 @@
 package dev.omnicube.client.util;
 
+import dev.omnicube.client.diag.Diagnostics;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -33,6 +34,7 @@ public final class OmniCubeText {
 		try {
 			org.lwjgl.glfw.GLFW.glfwSetClipboardString(client.getWindow().handle(), text);
 		} catch (Throwable throwable) {
+			Diagnostics.exception("clipboard", throwable);
 			sendError("Could not access the clipboard.");
 		}
 	}

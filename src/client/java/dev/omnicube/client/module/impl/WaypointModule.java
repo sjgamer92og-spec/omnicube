@@ -1,6 +1,7 @@
 package dev.omnicube.client.module.impl;
 
 import dev.omnicube.client.OmniCubeClient;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
@@ -45,7 +46,8 @@ public final class WaypointModule extends Module {
 	public String dimensionName(Minecraft client) {
 		try {
 			return client.level.dimension().identifier().getPath();
-		} catch (Throwable ignored) {
+		} catch (Throwable throwable) {
+			Diagnostics.exception("waypoints.dimension", throwable);
 			return "unknown";
 		}
 	}

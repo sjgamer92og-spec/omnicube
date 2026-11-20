@@ -2,6 +2,7 @@ package dev.omnicube.client.hud;
 
 import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.util.OmniCubeText;
 import dev.omnicube.client.util.Stopwatch;
 import dev.omnicube.client.waypoint.Waypoint;
@@ -595,8 +596,9 @@ public final class HudElements {
 				box(graphics, client, screenX + (key + gap) * 2, screenY + key + gap, key, "D", d);
 				box(graphics, client, screenX, screenY + (key + gap) * 2, (key + gap) * 2 - gap, "SPACE", space);
 				box(graphics, client, screenX + (key + gap) * 2, screenY + (key + gap) * 2, key, "SH", shift);
-			} catch (Throwable ignored) {
+			} catch (Throwable throwable) {
 				// If input polling is unavailable, the keystrokes element simply stays blank.
+				Diagnostics.exception("hud_keystrokes.input", throwable);
 			}
 		}
 
