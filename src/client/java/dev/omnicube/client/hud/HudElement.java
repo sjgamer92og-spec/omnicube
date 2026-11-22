@@ -269,7 +269,11 @@ public abstract class HudElement implements Feature {
 
 	public int width(Minecraft client) {
 		int width = 0;
-		for (String line : lines(client)) {
+		List<String> lines = lines(client);
+		if (lines == null || lines.isEmpty()) {
+			return PADDING * 2;
+		}
+		for (String line : lines) {
 			width = Math.max(width, client.font.width(line == null ? "" : line));
 		}
 		return width + PADDING * 2;

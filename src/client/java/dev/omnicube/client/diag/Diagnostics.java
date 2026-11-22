@@ -64,6 +64,8 @@ public final class Diagnostics {
 	private static final List<String> COLLISION_LINES = Collections.synchronizedList(new ArrayList<>());
 	private static final List<String> MIXIN_LINES = Collections.synchronizedList(new ArrayList<>());
 	private static final List<String> PERFORMANCE_LINES = Collections.synchronizedList(new ArrayList<>());
+	/** Named status lines (one per key) shown in the tab, the report and /omnicube diag. */
+	private static final Map<String, String> NOTES = Collections.synchronizedMap(new LinkedHashMap<>());
 
 	private static volatile Path logPath;
 	private static volatile Path previousPath;
@@ -270,6 +272,28 @@ public final class Diagnostics {
 	public static void performanceLine(String text) {
 		if (text != null) {
 			PERFORMANCE_LINES.add(text);
+		}
+	}
+
+	/** Records (or replaces) one named status line, e.g. the fullbright state. */
+	public static void note(String key, String text) {
+		if (key == null || text == null) {
+			return;
+		}
+		try {
+			NOTES.put(key, text);
+		} catch (Throwable ignored) {
+			// Never throw from diagnostics.
+		}
+	}
+
+	public static List<String> notes() {
+		try {
+			synchronized (NOTES) {
+				return new ArrayList<>(NOTES.values());
+			}
+		} catch (Throwable throwable) {
+			return List.of();
 		}
 	}
 
@@ -694,6 +718,10 @@ public final class Diagnostics {
 			for (String line : copyOf(CONFIG_LINES)) {
 				builder.append("  ").append(redact(line)).append('\n');
 			}
+			builder.append('\n').append("STATUS NOTES").append('\n');
+			for (String note : notes()) {
+				builder.append("  ").append(redact(note)).append('\n');
+			}
 			builder.append('\n').append("PERFORMANCE").append('\n');
 			for (String line : copyOf(PERFORMANCE_LINES)) {
 				builder.append("  ").append(redact(line)).append('\n');
@@ -722,6 +750,9 @@ public final class Diagnostics {
 		lines.add("Features: " + enabled + " enabled, " + disabled + " disabled, "
 				+ blocked + " blocked, " + failed + " failed");
 		lines.add("Exceptions logged: " + exceptionCount());
+		for (String note : notes()) {
+			lines.add(note);
+		}
 		if (failed > 0) {
 			for (FeatureRecord record : features()) {
 				if (record.failed()) {

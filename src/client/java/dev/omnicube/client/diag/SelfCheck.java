@@ -151,6 +151,7 @@ public final class SelfCheck {
 		checkMixin("EntityRenderDispatcherMixin", EntityRenderDispatcher.class, "omnicube$cullHiddenMob");
 		checkMixin("GameRendererMixin", net.minecraft.client.renderer.GameRenderer.class, "omnicube$applyZoom");
 		checkMixin("LoadingOverlayMixin", net.minecraft.client.gui.screens.LoadingOverlay.class, "omnicube$drawSplash");
+		checkMixin("LightTextureMixin", net.minecraft.client.renderer.LightTexture.class, "omnicube$fullbrightLight");
 	}
 
 	/**

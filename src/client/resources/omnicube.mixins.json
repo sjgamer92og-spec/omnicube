@@ -9,7 +9,8 @@
 		"ItemStackMixin",
 		"LivingEntityRendererMixin",
 		"GameRendererMixin",
-		"LoadingOverlayMixin"
+		"LoadingOverlayMixin",
+		"LightTextureMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

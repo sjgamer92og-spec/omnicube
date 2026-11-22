@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.3+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.4+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
@@ -15,6 +15,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 **v0.2.1 is a bug-fix round with no new features.** It fixes the reasons features could fail to appear (a single startup failure aborting every later registration, a config list clipped by an unreleased scissor, over-eager compatibility rules and FPS Safety disabling features by default) and adds a diagnostics log, an in-game **Diagnostics** tab and `/omnicube diag`. Details are in the release notes and [CHANGELOG.md](CHANGELOG.md).
 
 **v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
+
+**v0.2.4 makes Fullbright real and fixes bugs from the 0.2.3 round.** In 1.21.11 the lightmap is computed in `lightmap.fsh`, the gamma option is capped at 1.0 and a light level of 0 stays black at any gamma — so 0.2.x's gamma write could never light a cave. Fullbright now overrides the light coordinate every block and entity vertex is built with, through a `LightTexture.pack` hook, and offers **Full**, **Gamma (soft)** and **Night vision style** modes with a brightness slider. It never writes the saved gamma option, reports its hook state in the Diagnostics tab and `/omnicube diag`, falls back to a logged gamma raise if the hook is missing, and leaves lighting untouched while off.
 
 **v0.2.3 is the comfort and polish round.** Free Look is limited to a configurable arc, stays in first person and eases back when released; Zoom animates per frame; the Mojang loading screen is replaced by a branded OmniCube splash; Fullbright fully removes night and cave darkness; the armor HUD shows the material you wear with green/amber/red durability; empty armor and potion panels hide themselves; and the TNT fuse element can no longer crash the game.
 
@@ -30,7 +32,7 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **HUD editor** with drag-and-drop, right-click show/hide, fraction-based layout that survives resolution and GUI-scale changes, screen clamping and a master switch.
 
 ### Visuals and camera
-- **Fullbright** — removes night and cave darkness (gamma 16 by default) and restores your exact original value.
+- **Fullbright** — real full brightness: the lightmap light value is overridden, so caves, night and dark rooms are lit rather than merely softened. Modes **Full**, **Gamma (soft)** and **Night vision style**, a brightness slider, no change to your saved gamma option, and the hook state is visible in Diagnostics.
 - **Zoom** — hold a key to narrow the field of view with a smooth, adjustable animation; your saved FOV is never changed.
 - **Free Look** — hold a key to look around within a configurable arc (110° by default) without turning your player; it stays in first person and eases back when released.
 - **Custom Splash** — replaces the Mojang studios loading screen with handled rectangles, a progress bar, key hints and the OmniCube wordmark.
@@ -382,9 +384,14 @@ Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.
 | 0.2.0 | Free look, name tags, chat tools, streamer mode, crosshair, auto-reconnect, entity culling, compatibility registry, low-end preset, FPS Safety |
 | 0.2.1 | Bug-fix round: startup isolation, list clipping, compatibility rules, FPS Safety defaults; diagnostics log, in-game Diagnostics tab, `/omnicube diag`, startup self-check |
 | 0.2.2 | PolyForm Shield licence; hardware-tier presets and adaptive scaling in the Performance module |
+| 0.2.4 | Real lightmap-based Fullbright with Full / Gamma / Night vision modes and a brightness slider; hook status in diagnostics with a logged gamma fallback; HUD and splash bug fixes |
 | 0.2.3 | Bounded first-person free look with smooth return; frame-animated zoom; custom OmniCube loading screen; full-brightness fix; armour material names and durability colours; auto-hiding empty HUD panels; TNT fuse crash fix |
 
-### Next — 0.2.x candidates
+### Next — 0.2.5
+
+Light features, each with a toggle and safe Low-end preset values: chat filters, RAM warning, animation/particle toggles, settings profiles, death coordinates, low durability warning, item counter HUD and a hotbar/tool swap helper.
+
+### Later candidates
 
 - **True server-safe inventory sorting** — click simulation, container-size and anti-cheat review first.
 - **More world overlays** — fluids, BUD switches, spawn-proofing.

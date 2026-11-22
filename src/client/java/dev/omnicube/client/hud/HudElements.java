@@ -241,13 +241,18 @@ public final class HudElements {
 			long now = System.currentTimeMillis();
 			if (now - lastScan >= 500L) {
 				lastScan = now;
-				int count = 0;
-				for (var entity : client.level.entitiesForRendering()) {
-					if (entity.distanceToSqr(player.getX(), player.getY(), player.getZ()) <= 48.0D * 48.0D) {
-						count++;
+				try {
+					int count = 0;
+					for (var entity : client.level.entitiesForRendering()) {
+						if (entity.distanceToSqr(player.getX(), player.getY(), player.getZ()) <= 48.0D * 48.0D) {
+							count++;
+						}
 					}
+					cachedCount = count;
+				} catch (Throwable throwable) {
+					// The render entity view can change mid-iteration; keep the last count.
+					Diagnostics.exception("hud_entities.scan", throwable);
 				}
-				cachedCount = count;
 			}
 			return List.of("Entities  " + cachedCount);
 		}

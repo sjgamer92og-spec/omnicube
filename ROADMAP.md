@@ -1,5 +1,15 @@
 # OmniCube roadmap
 
+## Released — v0.2.4 (Minecraft 1.21.11)
+
+- TRUE fullbright: the light coordinate for every block and entity vertex is overridden from a
+  `LightTexture.pack` `@Inject` hook, so light level 0 areas are lit instead of merely softened
+- Three modes — Full, Gamma (soft), Night vision style — with a brightness slider, cached hot-path
+  values, no gamma option write and no per-frame allocations
+- Fullbright status line in the Diagnostics tab and `/omnicube diag`; a missing hook is logged and
+  falls back to a session-only gamma raise
+- Bug audit: guarded entity-count scan, null-safe HUD measuring, version-free splash fallback
+
 ## Released — v0.2.3 (Minecraft 1.21.11)
 
 - Free Look limited to a configurable arc, kept in first person, with a smooth return and
@@ -49,7 +59,18 @@
 - Compatibility registry, auto-disable, Compatibility screen and `/omnicube compat`
 - Low-end preset, FPS Safety and opt-in `/omnicube perf` profiler
 
-## Next — v0.2.x candidates
+## Next — v0.2.5 candidates (light features, each with a toggle)
+
+- Chat Filters (precompiled keyword/regex, hide or highlight, max 50, bad regex rejected)
+- RAM Warning (roughly once per second, default 85%, at most once per minute)
+- Animation and particle toggles (block break, rain, smoke, hand swing, screen shake)
+- Settings Profiles (Default, Low-end, Streaming, PvP; file I/O off the render thread)
+- Death coordinates in chat with a short recent-deaths list
+- Low durability warning for held tool and armour (configurable %, throttled)
+- Item counter HUD for a chosen item, refreshed only when the inventory changes
+- Hotbar/tool swap helper keybind (off by default, no per-tick scanning)
+
+## Earlier v0.2.x candidates
 
 - True server-safe inventory sorting (review click simulation, container sizes and anticheat rules first)
 - More world overlays: fluids, BUD switches, spawn-proofing

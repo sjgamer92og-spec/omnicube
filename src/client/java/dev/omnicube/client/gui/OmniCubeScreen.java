@@ -188,7 +188,7 @@ public final class OmniCubeScreen extends Screen {
 
 	private int contentHeight() {
 		if (tab == TAB_DIAGNOSTICS) {
-			return diagnostics.size() * 22 + 26;
+			return diagnostics.size() * 22 + 26 + Diagnostics.notes().size() * 11;
 		}
 		return visible.size() * (ROW_HEIGHT + ROW_GAP);
 	}
@@ -293,7 +293,16 @@ public final class OmniCubeScreen extends Screen {
 		graphics.drawString(this.font, "Diagnostics: " + diagnostics.size() + " features, "
 				+ Diagnostics.exceptionCount() + " exception(s)", listX + 4, y, 0xFFFFFFFF, true);
 		graphics.drawString(this.font, "Log: " + Diagnostics.logPath(), listX + 4, y + 11, 0xFF888888, false);
-		y += 26;
+		y += 22;
+		// Named status lines (Fullbright mode and hook state, for example).
+		for (String note : Diagnostics.notes()) {
+			if (y + 10 >= top && y <= bottom) {
+				graphics.drawString(this.font, this.font.plainSubstrByWidth(note, listW - 8), listX + 4, y, 0xFF7ED957,
+						false);
+			}
+			y += 11;
+		}
+		y += 4;
 		if (diagnostics.isEmpty()) {
 			graphics.drawString(this.font, "No feature status recorded.", listX + 4, y, 0xFFAAAAAA, false);
 			return;

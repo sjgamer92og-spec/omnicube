@@ -338,6 +338,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 			Diagnostics.performanceLine("frame costs are measured in-game with /omnicube perf");
 			Diagnostics.performanceLine("performance backend: " + PerformanceModule.backendId()
 					+ (PerformanceModule.backendUsingFallback() ? " (fell back to built-in)" : ""));
+			Diagnostics.note("fullbright", fullbrightModule == null ? "Fullbright: not registered"
+					: fullbrightModule.statusLine());
 			Diagnostics.performanceLine("FPS safety: " + (fpsSafetyModule != null && fpsSafetyModule.isEnabled()
 					? "armed at floor " + fpsSafetyModule.floor() + " FPS after 5s below it"
 					: "disabled"));
@@ -781,6 +783,24 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static ZoomModule zoom() {
 		return zoomModule;
+	}
+
+	public static FullbrightModule fullbright() {
+		return fullbrightModule;
+	}
+
+	/**
+	 * Called from the lightmap mixin for every packed light coordinate. Kept tiny and
+	 * allocation-free because it runs once per rendered vertex.
+	 */
+	public static int fullbrightLight(int blockLight, int skyLight) {
+		try {
+			FullbrightModule module = fullbrightModule;
+			return module == null ? -1 : module.lightOverride(blockLight, skyLight);
+		} catch (Throwable throwable) {
+			Diagnostics.exception("fullbright.lightmap", throwable);
+			return -1;
+		}
 	}
 
 	public static SplashModule splash() {

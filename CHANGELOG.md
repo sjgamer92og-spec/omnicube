@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.4 — real fullbright and a bug-audit round (Minecraft 1.21.11)
+
+- **Fullbright actually makes the world bright now.** The 0.2.x implementation only raised the
+  `gamma` option, which cannot work in 1.21.11: `lightmap.fsh` computes
+  `BrightnessFactor = max(0, gamma - darknessScale)`, gamma is capped at 1.0, and a lightmap texel
+  with light level 0 stays 0 at any gamma. The module now overrides the light coordinate that every
+  block and entity vertex is built from (`LightTexture.pack`) through a `@Inject` hook, so caves, night
+  and dark rooms really are lit. It never writes the saved gamma option, and disabling it restores
+  normal lighting immediately with no state to unwind.
+- **Three Fullbright modes:** **Full** (light coordinates forced to 15/15), **Gamma (soft)** (dark
+  areas lifted to a mid level so shading is kept) and **Night vision style** (near-maximum brightness
+  with a little sky tint, no potion flash or fade), plus a **Brightness** slider for the two soft
+  modes. The mode and lift are cached as plain ints, so the per-vertex path allocates nothing.
+- **Fullbright reports itself.** A status line (on/off, mode, light floor, whether the lightmap hook
+  applied) is shown in the Diagnostics tab and `/omnicube diag`. If the hook does not apply, that is
+  logged and the module falls back to a session-only gamma raise instead of doing nothing.
+- **Compatibility:** the existing Gamma Utils / Fullbright rules still disable OmniCube's module when
+  another mod owns fullbright; the normal blocked message is shown.
+- **Bug fixes:** the entity-count HUD no longer throws when the render entity view changes during its
+  scan; the HUD text measurer accepts an element with no lines instead of failing on a null list; the
+  splash version fallback no longer names a release.
+
 ## 0.2.3 — comfort and polish (Minecraft 1.21.11)
 
 - **Free Look behaves like a head turn, not an orbit.** The camera stays in first person, the yaw is
