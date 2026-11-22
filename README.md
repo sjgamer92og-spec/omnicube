@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.4+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.5+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
@@ -15,6 +15,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 **v0.2.1 is a bug-fix round with no new features.** It fixes the reasons features could fail to appear (a single startup failure aborting every later registration, a config list clipped by an unreleased scissor, over-eager compatibility rules and FPS Safety disabling features by default) and adds a diagnostics log, an in-game **Diagnostics** tab and `/omnicube diag`. Details are in the release notes and [CHANGELOG.md](CHANGELOG.md).
 
 **v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
+
+**v0.2.5 is the light-features round built on a bug-fix pass.** Config saves are now asynchronous and debounced (the render thread never waits for the disk), Fullbright gained a **Keep shading** option for Full mode and detects Sodium/Iris so a bypassed lightmap hook is logged rather than silently ignored, and the config screen finally reads its version from the mod metadata. New, each with a toggle: **Chat Filters** (keyword or regex, hide or highlight, 50-pattern cap, regexes validated when added), **RAM Warning**, **Visual Toggles** (particles, rain/snow, view bobbing, damage tilt), **Settings Profiles** (Default, Low-end, Streaming, PvP plus your own files), **Death Coordinates**, **Low Durability Warning**, an **Item Counter HUD** element and a **Tool Swap Helper** keybind.
 
 **v0.2.4 makes Fullbright real and fixes bugs from the 0.2.3 round.** In 1.21.11 the lightmap is computed in `lightmap.fsh`, the gamma option is capped at 1.0 and a light level of 0 stays black at any gamma — so 0.2.x's gamma write could never light a cave. Fullbright now overrides the light coordinate every block and entity vertex is built with, through a `LightTexture.pack` hook, and offers **Full**, **Gamma (soft)** and **Night vision style** modes with a brightness slider. It never writes the saved gamma option, reports its hook state in the Diagnostics tab and `/omnicube diag`, falls back to a logged gamma raise if the hook is missing, and leaves lighting untouched while off.
 
@@ -27,7 +29,8 @@ The name reflects the goal: one compact cube of client-side utilities covering m
 Every feature is client-side, can be switched off, and needs no server-side mod. Hover any row in the config screen for its exact state and the reason it is off.
 
 ### HUD
-- **20 draggable elements**: FPS and frame time, coordinates and chunk, biome and dimension, facing and yaw, server ping, movement speed, nearby entities, server address, memory use, session time, clock and in-game time, stopwatch, nearest TNT fuse, waypoint compass, potion effects, armor durability, experience, held-item durability, keystrokes and CPS.
+- **21 draggable elements**: FPS and frame time, coordinates and chunk, biome and dimension, facing and yaw, server ping, movement speed, nearby entities, server address, memory use, session time, clock and in-game time, stopwatch, nearest TNT fuse, waypoint compass, potion effects, armor durability, experience, held-item durability, keystrokes, CPS and an item counter for the stack in your hand.
+- **Item Counter** counts how many of the held item you carry, and only recounts when the held item changes or the cached count is half a second old — never once per frame.
 - **Armor, potion and durability panels that show only what exists** — the armor element names each worn piece ("Iron 100%") and colours durability green, amber or red; with no armor, or no active potion, the panel disappears instead of showing "none".
 - **HUD editor** with drag-and-drop, right-click show/hide, fraction-based layout that survives resolution and GUI-scale changes, screen clamping and a master switch.
 
@@ -43,6 +46,10 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Auto Sprint** — sprints while you hold forward, unless sneaking or using an item.
 - **Fly Speed** — sets creative flight speed and restores the previous value.
 - **Coordinates Copy** — copies your exact position and dimension to the clipboard.
+- **Death Coordinates** — announces where you died in chat and keeps the last five death positions for `/omnicube deaths`.
+- **Low Durability Warning** — one chat warning per item when armour or your held item drops below a configurable percentage, re-armed only after repair.
+- **Tool Swap Helper** — a keybind (unbound by default) selects the best hotbar tool for the block under your crosshair; it compares nine slots and never scans the world.
+- **Visual Toggles** — separate switches for particles (vanilla "Minimal"), rain and snow, view bobbing and the hurt camera tilt; the original video settings are restored when the module is turned off.
 
 ### World
 - **Waypoints** — save, list, set and remove points, with a compass HUD element and an optional death marker.
@@ -54,6 +61,7 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Chat Spam Collapse** — folds repeated lines into `message (2)`, `message (3)`, …
 - **Chat Log** — writes received chat and server messages to `logs/omnicube-chat.log` through a bounded background queue.
 - **Chat Search** — searchable in-game history screen.
+- **Chat Filters** — hide or highlight lines by keyword or regex. Patterns are precompiled, capped at 50, and an invalid regex is rejected and logged when you add it, never while a message arrives. Add them with `/omnicube filter add <text>` or `/omnicube filter addregex <pattern>`.
 
 ### Items and inventory
 - **Better Tooltips** — shulker and container previews, durability, food values and optional item IDs.
@@ -64,13 +72,16 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Hardware-aware adaptive quality** — one-time hardware tier, matching quality preset, then a per-second quality ladder driven by minimum and comfort frame rates. Vanilla options only, always restored.
 - **FPS Safety** — optional guard that sheds heavy features after a sustained drop and tells you what changed.
 - **Low-end preset** — one command that switches on the lean configuration.
+- **RAM Warning** — samples the Java heap about once a second and warns at most once a minute above a configurable percentage.
 - **Callback profiler** — `/omnicube perf` for per-feature client callback timings.
 
 ### Privacy
 - **Streamer Mode** — redacts coordinates, server addresses and IPv4 addresses in the HUD, chat and the diagnostics log.
 
 ### Configuration, diagnostics and compatibility
-- **Config screen** with Features, HUD, Diagnostics and Compatibility tabs, scrolling lists and per-row explanations.
+- **Config screen** with Features, HUD, Diagnostics and Compatibility tabs, a search box, scrolling lists and per-row explanations.
+- **Settings Profiles** — save, load, delete and rename named profiles, plus the built-in Default, Low-end, Streaming and PvP profiles. Profiles are files written and read off the render thread; a damaged profile is reported and your current settings are kept.
+- **Asynchronous config saves** — the JSON snapshot is built in memory and written by a background daemon thread with a 300 ms debounce, atomically via a temp file and rename. Failures are logged to diagnostics and the Diagnostics tab shows the last save result.
 - **Diagnostics log** — nine-section report in `logs/omnicube-diagnostics.log`, previous run kept, written off the render thread, plus `/omnicube diag` and a Copy-report button.
 - **Startup self-check** — verifies every feature, keybind, screen, HUD hook and mixin, logs failures and warns once in chat.
 - **Compatibility registry** — detects overlapping mods, disables only the duplicated feature, shows the exact reason and never runs both.
@@ -169,6 +180,15 @@ All commands are client-side and start with `/omnicube`:
 | `/omnicube macro add <name> <keycode> <command>` | Create a macro (the Macros screen is easier) |
 | `/omnicube macro list / remove / run` | Manage macros |
 | `/omnicube timer start / stop / reset` | Control the stopwatch |
+| `/omnicube filter add <text>` | Hide or highlight chat containing this keyword |
+| `/omnicube filter addregex <pattern>` | Add a regex filter (validated before it is saved) |
+| `/omnicube filter list / remove / clear` | Manage chat filters |
+| `/omnicube deaths` | List the last five death positions |
+| `/omnicube profile list` | Show the built-in and saved profiles |
+| `/omnicube profile save <name>` | Save the current settings as a profile |
+| `/omnicube profile load <name>` | Apply a built-in or saved profile |
+| `/omnicube profile delete <name>` | Delete a saved profile |
+| `/omnicube profile rename <name> <new name>` | Rename a saved profile |
 
 ### Default keybinds
 
@@ -183,6 +203,7 @@ All of these can be changed in **Options → Controls → Key Binds → OmniCube
 | B | Add a waypoint at your position |
 | F6 | Copy coordinates |
 | F7 | Copy the last chat message |
+| Unbound | Tool Swap Helper — select the best hotbar tool for the block you look at |
 | F8 | Open inventory tools |
 | F9 | Search chat history |
 
@@ -386,10 +407,11 @@ Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.
 | 0.2.2 | PolyForm Shield licence; hardware-tier presets and adaptive scaling in the Performance module |
 | 0.2.4 | Real lightmap-based Fullbright with Full / Gamma / Night vision modes and a brightness slider; hook status in diagnostics with a logged gamma fallback; HUD and splash bug fixes |
 | 0.2.3 | Bounded first-person free look with smooth return; frame-animated zoom; custom OmniCube loading screen; full-brightness fix; armour material names and durability colours; auto-hiding empty HUD panels; TNT fuse crash fix |
+| 0.2.5 | Asynchronous debounced config saves and Fullbright polish (Keep shading, Sodium/Iris detection); chat filters, RAM warning, visual toggles, settings profiles, death coordinates, low durability warning, item counter HUD and tool swap helper |
 
-### Next — 0.2.5
+### Next — 0.2.6
 
-Light features, each with a toggle and safe Low-end preset values: chat filters, RAM warning, animation/particle toggles, settings profiles, death coordinates, low durability warning, item counter HUD and a hotbar/tool swap helper.
+Still queued from the 0.2.4 plan and deferred by choice: a resource-pack quick toggle and a better server list, plus a hand-swing visual toggle (no safe client-side hook was found in 1.21.11 without breaking the first-person hand render).
 
 ### Later candidates
 

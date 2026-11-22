@@ -17,6 +17,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class ConfigManager {
 	private static final Gson GSON = new GsonBuilder()
@@ -28,6 +33,24 @@ public final class ConfigManager {
 	private static final String TEMP_FILE = "omnicube.json.tmp";
 
 	private static final String LEGACY_BACKUP_SUFFIX = ".pre-omnicube.bak";
+
+	/**
+	 * Rapid setting changes (a slider drag, for example) only schedule one write:
+	 * a later request replaces the generation, and a scheduled write whose
+	 * generation is stale does nothing. Writes always run on this single daemon
+	 * thread, never on the render thread.
+	 */
+	private static final long DEBOUNCE_MILLIS = 300L;
+	private static final AtomicLong GENERATION = new AtomicLong();
+	private static final ScheduledExecutorService WRITER = Executors.newSingleThreadScheduledExecutor(runnable -> {
+		Thread thread = new Thread(runnable, "OmniCube-Config-Writer");
+		thread.setDaemon(true);
+		thread.setPriority(Thread.MIN_PRIORITY);
+		return thread;
+	});
+
+	private static volatile String pendingJson;
+	private static volatile String lastResult = "no save yet";
 
 	private static volatile String loadSummary = "config load has not run yet";
 	private static volatile boolean usedDefaults;
@@ -49,6 +72,11 @@ public final class ConfigManager {
 		return loadSummary;
 	}
 
+	/** Human readable result of the last background write. */
+	public static String saveSummary() {
+		return lastResult;
+	}
+
 	public static boolean usedDefaults() {
 		return usedDefaults;
 	}
@@ -67,7 +95,7 @@ public final class ConfigManager {
 			backupCorruptFile(path);
 			OmniCubeConfig recovered = loadLegacy(path);
 			if (recovered != null) {
-									record(path.getFileName() + " was unreadable; recovered settings from an earlier config", true);
+				record(path.getFileName() + " was unreadable; recovered settings from an earlier config", true);
 				return recovered;
 			}
 			record(path.getFileName() + " was unreadable; backed up and reset to defaults", true);
@@ -190,27 +218,91 @@ public final class ConfigManager {
 		}
 	}
 
+	/**
+	 * Builds the JSON snapshot on the calling thread (it only reads in-memory state)
+	 * and schedules the disk write on the background writer. Nothing here blocks on
+	 * the disk, and repeated calls within the debounce window collapse into one write.
+	 */
 	public static void save(OmniCubeConfig config, ModuleManager modules, HudManager hud) {
-		Path path = configPath();
 		try {
-			config.sanitize();
-			modules.write(config.modules);
-			hud.write(config.hud);
-			write(path, config);
+			pendingJson = snapshot(config, modules, hud);
+			long generation = GENERATION.incrementAndGet();
+			WRITER.schedule(() -> writePending(generation), DEBOUNCE_MILLIS, TimeUnit.MILLISECONDS);
 		} catch (Throwable throwable) {
 			// A failed save must never break a screen, a tick or the shutdown hook.
 			Diagnostics.exception("config.save", throwable);
+			OmniCubeMod.LOGGER.error("[OmniCube] Could not prepare the config save.", throwable);
+		}
+	}
+
+	/** Serialises the live state into the exact JSON that will be written. */
+	public static String snapshot(OmniCubeConfig config, ModuleManager modules, HudManager hud) {
+		config.sanitize();
+		modules.write(config.modules);
+		hud.write(config.hud);
+		return GSON.toJson(config);
+	}
+
+	private static void writePending(long generation) {
+		if (generation != GENERATION.get()) {
+			// A newer change was requested; that request owns the write.
+			return;
+		}
+		String json = pendingJson;
+		if (json == null) {
+			return;
+		}
+		Path path = configPath();
+		try {
+			writeJson(path, json);
+			lastResult = "saved " + path.getFileName() + " in the background";
+			Diagnostics.note("config_save", "Config save: wrote " + path.getFileName() + " on a background thread");
+		} catch (Throwable throwable) {
+			lastResult = "FAILED to save " + path.getFileName() + ": " + Diagnostics.describe(throwable);
+			Diagnostics.exception("config.save.async", throwable);
+			Diagnostics.note("config_save", "Config save: FAILED - " + Diagnostics.describe(throwable));
 			OmniCubeMod.LOGGER.error("[OmniCube] Could not save the config to {}.", path, throwable);
 		}
 	}
 
+	/**
+	 * Writes any pending snapshot and waits briefly. Called on shutdown/disconnect
+	 * only, never from the render loop.
+	 */
+	public static void flush() {
+		try {
+			GENERATION.incrementAndGet();
+			String json = pendingJson;
+			if (json == null) {
+				return;
+			}
+			Future<?> future = WRITER.submit(() -> {
+				try {
+					writeJson(configPath(), json);
+					lastResult = "saved " + configPath().getFileName() + " on shutdown";
+				} catch (Throwable throwable) {
+					Diagnostics.exception("config.flush", throwable);
+					OmniCubeMod.LOGGER.error("[OmniCube] Could not flush the config on shutdown.", throwable);
+				}
+			});
+			future.get(2L, TimeUnit.SECONDS);
+		} catch (Throwable throwable) {
+			Diagnostics.exception("config.flush", throwable);
+		}
+	}
+
 	private static void write(Path path, OmniCubeConfig config) throws IOException {
-		Path temp = path.resolveSibling(TEMP_FILE);
 		config.sanitize();
+		writeJson(path, GSON.toJson(config));
+	}
+
+	/** Atomic write: temp file in the same directory, then rename over the target. */
+	private static void writeJson(Path path, String json) throws IOException {
+		Path temp = path.resolveSibling(TEMP_FILE);
 		Files.createDirectories(path.getParent());
 
 		try (Writer writer = Files.newBufferedWriter(temp)) {
-			GSON.toJson(config, writer);
+			writer.write(json);
 		}
 
 		try {

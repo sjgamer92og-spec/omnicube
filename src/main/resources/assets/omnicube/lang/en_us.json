@@ -10,6 +10,7 @@
 	"key.omnicube.copy_chat": "Copy last chat message",
 	"key.omnicube.inventory_tools": "Open inventory tools",
 	"key.omnicube.chat_search": "Search chat history",
+	"key.omnicube.swap_tool": "Swap to the best tool",
 	"modmenu.nameTranslation.omnicube": "OmniCube",
 	"modmenu.summaryTranslation.omnicube": "All-in-one client toolkit: HUD, QoL, waypoints, macros and adaptive performance."
 }

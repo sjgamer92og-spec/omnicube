@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.2.5 — async saves, fullbright polish and eight light features (Minecraft 1.21.11)
+
+- **Config saves no longer touch the render thread.** The JSON snapshot is built in memory and written
+  by one background daemon thread, atomically (temp file + rename), with a 300 ms debounce so dragging
+  a slider schedules one write instead of dozens. Repeated writes collapse by generation, the file is
+  flushed on shutdown, and every failure is logged and shown in the Diagnostics tab.
+- **Fullbright polish.** New **Keep shading** option: Full mode lifts every light coordinate to 11–15
+  instead of forcing 15/15, so caves are bright but block faces and particles keep their relative
+  shading. The module now detects Sodium, Embeddium and Iris at startup and logs a status note, so a
+  bypassed lightmap hook is explained instead of looking like a broken feature; a missing hook still
+  falls back to a session-only gamma raise.
+- **Bug: the config screen showed a hard-coded `0.2.1`.** It now reads the version from the loaded mod
+  metadata and shows `dev` if that is unavailable.
+- **Chat Filters** (`chat_filter`, off by default): hide or highlight lines by keyword or regex.
+  Precompiled patterns, 50-pattern cap, invalid regex rejected and logged at add time, cached compile
+  invalidation only when the saved list changes. Manage with `/omnicube filter add|addregex|remove|list|clear`.
+- **RAM Warning** (`ram_warning`): heap sampled about once a second, warning at a configurable
+  percentage (85% default), at most once a minute.
+- **Visual Toggles** (`visual_toggles`): separate particle, rain/snow, view-bobbing and damage-tilt
+  switches. Everything maps to an existing vanilla option, previous values are captured on enable and
+  restored on disable, and rain/snow is skipped through a `WeatherEffectRenderer` `@Inject` hook with
+  `require = 0`.
+- **Settings Profiles** (`settings_profiles`): save, load, delete and rename named profiles plus the
+  built-in **Default**, **Low-end**, **Streaming** and **PvP** profiles. Files live in
+  `config/omnicube/profiles/`, are read and written off the render thread, and a damaged profile logs
+  and falls back to your current settings. Available from the new **Profiles** button and
+  `/omnicube profile save|load|delete|rename|list`.
+- **Death Coordinates** (`death_coords`): announces where you died and keeps the last five positions
+  in the config for `/omnicube deaths`.
+- **Low Durability Warning** (`durability_warning`): one warning per item below a configurable
+  percentage, re-armed when the item is repaired or replaced.
+- **Item Counter HUD** (`hud_item_count`): how many of the held item you carry, recounted only when the
+  held item changes or the cache is 500 ms old.
+- **Tool Swap Helper** (`tool_swap`): an unbound keybind selects the best hotbar tool for the block you
+  look at, using the existing crosshair pick and nine slot comparisons.
+- Diagnostics: every new feature publishes a status note to the Diagnostics tab and `/omnicube diag`;
+  `SelfCheck` now verifies the new modules, HUD element, keybind, screen and weather mixin. The Low-end
+  preset disables the new heavy or noisy extras and switches on RAM Warning and low-end Visual Toggles.
+
 ## 0.2.4 — real fullbright and a bug-audit round (Minecraft 1.21.11)
 
 - **Fullbright actually makes the world bright now.** The 0.2.x implementation only raised the

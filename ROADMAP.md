@@ -1,5 +1,19 @@
 # OmniCube roadmap
 
+## Released — v0.2.5 (Minecraft 1.21.11)
+
+- Asynchronous, debounced, atomic config saves on a background thread; shutdown flush and logged failures
+- Fullbright **Keep shading** option and Sodium/Embeddium/Iris detection with a logged status note
+- Config screen version read from mod metadata instead of a hard-coded number
+- Chat Filters (keyword/regex, hide/highlight, 50 cap, compile-once)
+- RAM Warning (per-second sampling, once-a-minute warnings)
+- Visual Toggles (particles, rain/snow, view bobbing, damage tilt) with option restore
+- Settings Profiles (Default, Low-end, Streaming, PvP plus saved files; off-render-thread I/O)
+- Death Coordinates with a five-entry history
+- Low Durability Warning with per-item re-arming
+- Item Counter HUD element with a cached recount
+- Tool Swap Helper keybind using the crosshair pick
+
 ## Released — v0.2.4 (Minecraft 1.21.11)
 
 - TRUE fullbright: the light coordinate for every block and entity vertex is overridden from a

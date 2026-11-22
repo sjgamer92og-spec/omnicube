@@ -4,6 +4,7 @@ import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.setting.Setting;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 
@@ -36,6 +37,8 @@ public final class FullbrightModule extends Module {
 
 	private final Setting.Choice mode = add(new Setting.Choice("mode", "Mode", MODES, "Full"));
 	private final Setting.Num brightness = add(new Setting.Num("brightness", "Brightness", 100.0D, 10.0D, 100.0D, 5.0D));
+	/** Full mode lights every texel equally; this keeps some relative shading instead. */
+	private final Setting.Bool keepShading = add(new Setting.Bool("keep_shading", "Keep shading in Full mode", false));
 
 	/** Cached hot-path state; -1 means "do not touch the lightmap". */
 	private volatile int modeCode = -1;
@@ -43,6 +46,7 @@ public final class FullbrightModule extends Module {
 	/** Last mode/brightness the cache was built from, so the tick can compare cheaply. */
 	private String cachedMode = "";
 	private int cachedBrightness = -1;
+	private boolean cachedShading;
 	private boolean hookChecked;
 	private boolean hookApplied;
 	/** Set only when the lightmap hook is missing; restored as soon as possible. */
@@ -60,6 +64,7 @@ public final class FullbrightModule extends Module {
 		try {
 			refreshCache();
 			checkHookOnce();
+			checkRenderMods();
 			if (!hookApplied) {
 				useGammaFallback();
 			} else {
@@ -97,7 +102,12 @@ public final class FullbrightModule extends Module {
 			return -1;
 		}
 		if (modeCode == MODE_FULL) {
-			return FULL_BRIGHT;
+			if (!cachedShading) {
+				return FULL_BRIGHT;
+			}
+			// Lift every coordinate most of the way to 15 but keep the original
+			// relative brightness, so caves stay readable without looking flat.
+			return (blend(blockLight) << 4) | (blend(skyLight) << 20);
 		}
 		int block = Math.max(blockLight, lift);
 		// Night vision style keeps a little sky tint so it does not look flat white.
@@ -109,7 +119,9 @@ public final class FullbrightModule extends Module {
 		try {
 			String currentMode = mode.get();
 			int currentBrightness = (int) Math.round(brightness.get());
-			if (currentMode.equals(cachedMode) && currentBrightness == cachedBrightness) {
+			boolean currentShading = keepShading.get();
+			if (currentMode.equals(cachedMode) && currentBrightness == cachedBrightness
+					&& currentShading == cachedShading) {
 				modeCode = isEnabled() ? modeCode : -1;
 				if (isEnabled() && modeCode < 0) {
 					modeCode = codeOf(currentMode);
@@ -118,6 +130,7 @@ public final class FullbrightModule extends Module {
 			}
 			cachedMode = currentMode;
 			cachedBrightness = currentBrightness;
+			cachedShading = currentShading;
 			int code = codeOf(currentMode);
 			double fraction = Math.max(0.0D, Math.min(1.0D, currentBrightness / 100.0D));
 			lift = code == MODE_GAMMA
@@ -129,6 +142,30 @@ public final class FullbrightModule extends Module {
 			// A broken setting must never leave the light override half-applied.
 			modeCode = -1;
 			Diagnostics.exception("fullbright.cache", throwable);
+		}
+	}
+
+	/** Lifts a light level most of the way to 15 while keeping relative shading. */
+	private static int blend(int level) {
+		int clamped = Math.max(0, Math.min(15, level));
+		return clamped + (15 - clamped) * 3 / 4;
+	}
+
+	/** Notes when a renderer mod is present that may bypass the lightmap hook. */
+	private void checkRenderMods() {
+		try {
+			boolean sodium = FabricLoader.getInstance().isModLoaded("sodium")
+					|| FabricLoader.getInstance().isModLoaded("embeddium");
+			boolean iris = FabricLoader.getInstance().isModLoaded("iris");
+			if (!sodium && !iris) {
+				return;
+			}
+			String mods = (sodium ? "Sodium" : "") + (sodium && iris ? " and " : "") + (iris ? "Iris" : "");
+			Diagnostics.event("fullbright", mods + " detected; the lightmap hook may be bypassed");
+			Diagnostics.note("fullbright_render_mods", "Fullbright: " + mods
+					+ " present - if caves stay dark the hook was bypassed and Gamma fallback applies");
+		} catch (Throwable throwable) {
+			Diagnostics.exception("fullbright.render_mods", throwable);
 		}
 	}
 
@@ -229,6 +266,9 @@ public final class FullbrightModule extends Module {
 			builder.append(" | light 15/15");
 		} else if (modeCode >= 0) {
 			builder.append(" | light floor ").append(lift);
+		}
+		if (modeCode == MODE_FULL && cachedShading) {
+			builder.append(" | shading kept");
 		}
 		builder.append(" | lightmap hook ").append(hookApplied ? "applied" : (hookChecked ? "missing" : "unchecked"));
 		return builder.toString();

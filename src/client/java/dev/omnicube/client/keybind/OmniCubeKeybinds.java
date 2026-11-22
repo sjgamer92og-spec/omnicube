@@ -18,6 +18,7 @@ public final class OmniCubeKeybinds {
 	public static KeyMapping copyChat;
 	public static KeyMapping inventoryTools;
 	public static KeyMapping chatSearch;
+	public static KeyMapping swapTool;
 
 	private OmniCubeKeybinds() {
 	}
@@ -40,6 +41,8 @@ public final class OmniCubeKeybinds {
 		copyChat = register("key.omnicube.copy_chat", GLFW.GLFW_KEY_F7);
 		inventoryTools = register("key.omnicube.inventory_tools", GLFW.GLFW_KEY_F8);
 		chatSearch = register("key.omnicube.chat_search", GLFW.GLFW_KEY_F9);
+		// Unbound on purpose: the player chooses a key that does not clash with combat keys.
+		swapTool = register("key.omnicube.swap_tool", GLFW.GLFW_KEY_UNKNOWN);
 	}
 
 	private static KeyMapping register(String translationKey, int defaultKey) {

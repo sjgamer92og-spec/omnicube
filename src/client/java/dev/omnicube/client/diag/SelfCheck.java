@@ -35,13 +35,15 @@ public final class SelfCheck {
 			"fullbright", "zoom", "free_look", "auto_sprint", "fly_speed", "chat_log", "tooltips",
 			"waypoints", "macros", "coordinates", "performance", "hud", "better_chat", "chat_collapse",
 			"streamer_mode", "crosshair", "auto_reconnect", "entity_culling", "fps_safety", "name_tags",
-			"world_markers", "inventory_tools", "splash"
+			"world_markers", "inventory_tools", "splash", "chat_filter", "ram_warning", "visual_toggles",
+			"death_coords", "durability_warning", "tool_swap", "settings_profiles"
 	};
 
 	private static final String[] REQUIRED_HUD = {
 			"hud_fps", "hud_coords", "hud_biome", "hud_facing", "hud_ping", "hud_speed", "hud_entities",
 			"hud_server", "hud_memory", "hud_session", "hud_clock", "hud_timer", "hud_tnt", "hud_waypoint",
-			"hud_experience", "hud_potions", "hud_armor", "hud_durability", "hud_keystrokes", "hud_cps"
+			"hud_experience", "hud_potions", "hud_armor", "hud_durability", "hud_keystrokes", "hud_cps",
+			"hud_item_count"
 	};
 
 	private static final List<String> FAILURES = new ArrayList<>();
@@ -109,6 +111,7 @@ public final class SelfCheck {
 		checkKeybind("copy_chat", OmniCubeKeybinds.copyChat);
 		checkKeybind("inventory_tools", OmniCubeKeybinds.inventoryTools);
 		checkKeybind("chat_search", OmniCubeKeybinds.chatSearch);
+		checkKeybind("swap_tool", OmniCubeKeybinds.swapTool);
 	}
 
 	private static void checkKeybind(String id, KeyMapping mapping) {
@@ -124,6 +127,7 @@ public final class SelfCheck {
 		probe("screen.ChatSearchScreen", () -> new ChatSearchScreen(null));
 		probe("screen.MacroScreen", () -> new MacroScreen(null));
 		probe("screen.InventoryToolsScreen", () -> new InventoryToolsScreen(null));
+		probe("screen.ProfilesScreen", () -> new dev.omnicube.client.gui.ProfilesScreen(null));
 		Feature first = OmniCubeClient.features().isEmpty() ? null : OmniCubeClient.features().getFirst();
 		if (first != null) {
 			probe("screen.ModuleSettingsScreen", () -> new dev.omnicube.client.gui.ModuleSettingsScreen(null, first));
@@ -152,6 +156,8 @@ public final class SelfCheck {
 		checkMixin("GameRendererMixin", net.minecraft.client.renderer.GameRenderer.class, "omnicube$applyZoom");
 		checkMixin("LoadingOverlayMixin", net.minecraft.client.gui.screens.LoadingOverlay.class, "omnicube$drawSplash");
 		checkMixin("LightTextureMixin", net.minecraft.client.renderer.LightTexture.class, "omnicube$fullbrightLight");
+		checkMixin("WeatherEffectRendererMixin", net.minecraft.client.renderer.WeatherEffectRenderer.class,
+				"omnicube$hideWeather");
 	}
 
 	/**

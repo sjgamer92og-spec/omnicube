@@ -55,6 +55,7 @@ public final class HudElements {
 		hud.register(new DurabilityHud());
 		hud.register(new KeystrokesHud());
 		hud.register(new CpsHud());
+		hud.register(new ItemCountHud());
 
 		// A small, spaced default layout keeps the HUD readable on a 320x240 GUI
 		// and avoids stacking every optional element on top of the FPS counter.
@@ -78,6 +79,7 @@ public final class HudElements {
 		layout(hud, "hud_durability", 0.95D, 0.95D, false);
 		layout(hud, "hud_keystrokes", 0.95D, 0.81D, false);
 		layout(hud, "hud_cps", 0.95D, 0.675D, false);
+		layout(hud, "hud_item_count", 0.006D, 0.95D, false);
 	}
 
 	private static void layout(HudManager hud, String id, double x, double y, boolean enabled) {
@@ -623,6 +625,55 @@ public final class HudElements {
 			}
 			int remaining = Math.max(0, stack.getMaxDamage() - stack.getDamageValue());
 			return List.of(stack.getHoverName().getString(), "Durability  " + remaining + " / " + stack.getMaxDamage());
+		}
+	}
+
+	private static final class ItemCountHud extends HudElement {
+		private static final long REFRESH_MILLIS = 500L;
+		private String cachedItem = "";
+		private String cachedName = "Item";
+		private int cachedCount;
+		private long lastRefresh;
+
+		private ItemCountHud() {
+			super("hud_item_count", "Item Counter", "How many of the item in your hand you are carrying.", 0.006D, 0.95D);
+		}
+
+		@Override
+		public List<String> lines(Minecraft client) {
+			LocalPlayer player = client.player;
+			if (player == null) {
+				return fallback();
+			}
+			try {
+				ItemStack held = player.getMainHandItem();
+				if (held.isEmpty()) {
+					cachedItem = "";
+					return List.of("Item  empty");
+				}
+				String identity = held.getItem().toString();
+				long now = System.currentTimeMillis();
+				// Recount only when the held item changed or the cached count is stale;
+				// this never scans the inventory once per frame.
+				if (!identity.equals(cachedItem) || now - lastRefresh >= REFRESH_MILLIS) {
+					int total = 0;
+					var inventory = player.getInventory();
+					for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+						ItemStack stack = inventory.getItem(slot);
+						if (!stack.isEmpty() && ItemStack.isSameItemSameComponents(stack, held)) {
+							total += stack.getCount();
+						}
+					}
+					cachedItem = identity;
+					cachedName = held.getHoverName().getString();
+					cachedCount = total;
+					lastRefresh = now;
+				}
+				return List.of(cachedName, "Count  " + cachedCount);
+			} catch (Throwable throwable) {
+				Diagnostics.exception("hud_item_count.count", throwable);
+				return List.of("Item  unavailable");
+			}
 		}
 	}
 

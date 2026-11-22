@@ -10,7 +10,8 @@
 		"LivingEntityRendererMixin",
 		"GameRendererMixin",
 		"LoadingOverlayMixin",
-		"LightTextureMixin"
+		"LightTextureMixin",
+		"WeatherEffectRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 0

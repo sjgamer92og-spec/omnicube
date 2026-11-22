@@ -27,7 +27,14 @@ import dev.omnicube.client.module.impl.CrosshairModule;
 import dev.omnicube.client.module.impl.EntityCullingModule;
 import dev.omnicube.client.module.impl.FpsSafetyModule;
 import dev.omnicube.client.module.impl.FreeLookModule;
+import dev.omnicube.client.module.impl.ChatFilterModule;
+import dev.omnicube.client.module.impl.DeathCoordsModule;
+import dev.omnicube.client.module.impl.DurabilityWarningModule;
 import dev.omnicube.client.module.impl.FullbrightModule;
+import dev.omnicube.client.module.impl.RamWarningModule;
+import dev.omnicube.client.module.impl.SettingsProfilesModule;
+import dev.omnicube.client.module.impl.ToolSwapModule;
+import dev.omnicube.client.module.impl.VisualTogglesModule;
 import dev.omnicube.client.module.impl.HudModule;
 import dev.omnicube.client.module.impl.InventoryToolsModule;
 import dev.omnicube.client.module.impl.MacroModule;
@@ -91,6 +98,12 @@ public final class OmniCubeClient implements ClientModInitializer {
 	private static AutoReconnectModule autoReconnectModule;
 	private static EntityCullingModule entityCullingModule;
 	private static FpsSafetyModule fpsSafetyModule;
+	private static ChatFilterModule chatFilterModule;
+	private static RamWarningModule ramWarningModule;
+	private static VisualTogglesModule visualTogglesModule;
+	private static DeathCoordsModule deathCoordsModule;
+	private static DurabilityWarningModule durabilityWarningModule;
+	private static ToolSwapModule toolSwapModule;
 
 	private static boolean hudOverlayAttached;
 	private static boolean crosshairAttached;
@@ -131,6 +144,13 @@ public final class OmniCubeClient implements ClientModInitializer {
 			nameTagModule = register(new NameTagModule());
 			markerModule = register(new MarkerModule());
 			register(new InventoryToolsModule());
+			chatFilterModule = register(new ChatFilterModule());
+			ramWarningModule = register(new RamWarningModule());
+			visualTogglesModule = register(new VisualTogglesModule());
+			deathCoordsModule = register(new DeathCoordsModule());
+			durabilityWarningModule = register(new DurabilityWarningModule());
+			toolSwapModule = register(new ToolSwapModule());
+			register(new SettingsProfilesModule());
 		});
 
 		safe("registry.hud", () -> HudElements.register(hud));
@@ -179,7 +199,19 @@ public final class OmniCubeClient implements ClientModInitializer {
 				(message, signedMessage, sender, params, timestamp) -> {
 					long started = PerfMonitor.start();
 					try {
-						Component display = message;
+						Component incoming = message;
+						if (chatFilterModule != null && chatFilterModule.isEnabled()) {
+							if (chatFilterModule.hides(incoming)) {
+								Diagnostics.event("chat_filter", "hid a chat line");
+								return false;
+							}
+							Component filtered = chatFilterModule.apply(incoming);
+							if (filtered == null) {
+								return false;
+							}
+							incoming = filtered;
+						}
+						Component display = incoming;
 						if (streamerModule != null) {
 							display = streamerModule.redact(display);
 						}
@@ -220,6 +252,14 @@ public final class OmniCubeClient implements ClientModInitializer {
 				if (!overlay && streamerModule != null) {
 					display = streamerModule.redact(display);
 				}
+				// Only highlight here: hiding is handled by ALLOW_CHAT/ALLOW_GAME, and a
+				// null component must never be returned from MODIFY_GAME.
+				if (!overlay && chatFilterModule != null && !chatFilterModule.hideMode()) {
+					Component highlighted = chatFilterModule.apply(display);
+					if (highlighted != null) {
+						display = highlighted;
+					}
+				}
 				if (!overlay && chatModule != null && chatModule.timestampEnabled()) {
 					display = chatModule.decorate(display);
 				}
@@ -228,6 +268,15 @@ public final class OmniCubeClient implements ClientModInitializer {
 				Diagnostics.exception("chat.modify_game", throwable);
 			}
 			return message;
+		}));
+
+		safe("chat.allow_game", () -> ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
+			try {
+				return chatFilterModule == null || !chatFilterModule.hides(message);
+			} catch (Throwable throwable) {
+				Diagnostics.exception("chat_filter.allow_game", throwable);
+				return true;
+			}
 		}));
 
 		safe("chat.log.callback", () -> ClientReceiveMessageEvents.CHAT.register(
@@ -320,8 +369,9 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 		safe("lifecycle.callbacks", () -> {
 			ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
-				safe("shutdown.restore", OmniCubeClient::restoreSessionOptions);
+								safe("shutdown.restore", OmniCubeClient::restoreSessionOptions);
 				safe("shutdown.save", OmniCubeClient::saveConfig);
+				safe("shutdown.config_flush", dev.omnicube.client.config.ConfigManager::flush);
 				Diagnostics.event("lifecycle", "client stopping");
 				Diagnostics.flushForShutdown();
 			});
@@ -340,6 +390,23 @@ public final class OmniCubeClient implements ClientModInitializer {
 					+ (PerformanceModule.backendUsingFallback() ? " (fell back to built-in)" : ""));
 			Diagnostics.note("fullbright", fullbrightModule == null ? "Fullbright: not registered"
 					: fullbrightModule.statusLine());
+			Diagnostics.note("chat_filter", chatFilterModule == null ? "Chat Filters: not registered"
+					: chatFilterModule.statusLine());
+			Diagnostics.note("ram_warning", ramWarningModule == null ? "RAM Warning: not registered"
+					: ramWarningModule.statusLine());
+			Diagnostics.note("visual_toggles", visualTogglesModule == null ? "Visual toggles: not registered"
+					: visualTogglesModule.statusLine());
+			Diagnostics.note("death_coords", deathCoordsModule == null ? "Death coordinates: not registered"
+					: deathCoordsModule.statusLine());
+			Diagnostics.note("durability_warning", durabilityWarningModule == null ? "Low durability: not registered"
+					: durabilityWarningModule.statusLine());
+			Diagnostics.note("tool_swap", toolSwapModule == null ? "Tool swap: not registered"
+					: toolSwapModule.statusLine());
+			Feature profilesFeature = featureById("settings_profiles");
+			Diagnostics.note("settings_profiles", "Settings profiles: "
+					+ (profilesFeature == null ? "not registered" : profilesFeature.isEnabled() ? "ON" : "OFF"));
+			Diagnostics.note("config", "Config: " + dev.omnicube.client.config.ConfigManager.loadSummary());
+			Diagnostics.note("config_save", "Config save: " + dev.omnicube.client.config.ConfigManager.saveSummary());
 			Diagnostics.performanceLine("FPS safety: " + (fpsSafetyModule != null && fpsSafetyModule.isEnabled()
 					? "armed at floor " + fpsSafetyModule.floor() + " FPS after 5s below it"
 					: "disabled"));
@@ -507,6 +574,13 @@ public final class OmniCubeClient implements ClientModInitializer {
 						}
 					}
 				}
+				if (OmniCubeKeybinds.swapTool != null) {
+					while (OmniCubeKeybinds.swapTool.consumeClick()) {
+						if (toolSwapModule != null) {
+							toolSwapModule.swapToBestTool(client);
+						}
+					}
+				}
 				if (OmniCubeKeybinds.chatSearch != null) {
 					while (OmniCubeKeybinds.chatSearch.consumeClick()) {
 						if (chatModule != null && chatModule.isEnabled()) {
@@ -624,7 +698,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 		for (String id : List.of("free_look", "name_tags", "world_markers", "entity_culling", "inventory_tools",
 				"chat_log", "hud_session", "hud_clock", "hud_timer", "hud_tnt", "hud_waypoint", "hud_experience",
 				"hud_potions", "hud_armor", "hud_durability", "hud_keystrokes", "hud_cps", "hud_entities",
-				"hud_speed", "hud_biome", "hud_facing", "hud_ping", "hud_server", "hud_memory")) {
+				"hud_speed", "hud_biome", "hud_facing", "hud_ping", "hud_server", "hud_memory",
+				"hud_item_count", "tool_swap", "durability_warning", "chat_filter")) {
 			Feature feature = featureById(id);
 			if (feature == null || !feature.isEnabled()) {
 				continue;
@@ -637,6 +712,14 @@ public final class OmniCubeClient implements ClientModInitializer {
 				continue;
 			}
 			disabled.add(id);
+		}
+		// Cheap features that help a low-end machine are switched on with safe values.
+		if (ramWarningModule != null && !ramWarningModule.isEnabled()) {
+			ramWarningModule.setEnabledWithReason(true, "Enabled by Low-end preset");
+		}
+		if (visualTogglesModule != null && !visualTogglesModule.isEnabled()) {
+			visualTogglesModule.applyLowEndValues();
+			visualTogglesModule.setEnabledWithReason(true, "Enabled by Low-end preset");
 		}
 		String performance = "already on";
 		if (performanceModule != null) {
@@ -723,6 +806,8 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static void saveConfig() {
 		try {
+			// Asynchronous: the JSON snapshot is built here, the disk write happens on a
+			// background thread, so no screen or tick ever waits for the disk.
 			ConfigManager.save(config, modules, hud);
 		} catch (Throwable throwable) {
 			Diagnostics.exception("config.save", throwable);
@@ -733,14 +818,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 	public static void reloadConfig() {
 		try {
 			config = ConfigManager.load();
-			modules.read(config.modules);
-			hud.read(config.hud);
-			if (hudModule != null) {
-				HudElement.masterEnabled = hudModule.isEnabled();
-				HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
-			}
-			modules.recordAllStates();
-			hud.recordAllStates();
+			applyConfigSections();
 			Diagnostics.event("config", "reloaded " + ConfigManager.loadSummary());
 			OmniCubeText.send("Config reloaded.");
 		} catch (Throwable throwable) {
@@ -787,6 +865,69 @@ public final class OmniCubeClient implements ClientModInitializer {
 
 	public static FullbrightModule fullbright() {
 		return fullbrightModule;
+	}
+
+	/** Read from the weather render hook; cheap and safe when the module is absent. */
+	public static boolean hideWeather() {
+		VisualTogglesModule module = visualTogglesModule;
+		return module != null && module.weatherHidden();
+	}
+
+	public static ChatFilterModule chatFilter() {
+		return chatFilterModule;
+	}
+
+	public static RamWarningModule ramWarning() {
+		return ramWarningModule;
+	}
+
+	public static VisualTogglesModule visualToggles() {
+		return visualTogglesModule;
+	}
+
+	public static DeathCoordsModule deathCoords() {
+		return deathCoordsModule;
+	}
+
+	public static DurabilityWarningModule durabilityWarning() {
+		return durabilityWarningModule;
+	}
+
+	public static ToolSwapModule toolSwap() {
+		return toolSwapModule;
+	}
+
+	/**
+	 * Re-reads the modules and HUD sections of the live config and saves the result.
+	 * Used by config reload and by loading a settings profile.
+	 */
+	/** Re-applies the HUD Overlay master switch to the HUD element flags. */
+	public static void refreshHudMasterFlags() {
+		try {
+			if (hudModule != null) {
+				HudElement.masterEnabled = hudModule.isEnabled();
+				HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
+			}
+		} catch (Throwable throwable) {
+			Diagnostics.exception("hud.master_flags", throwable);
+		}
+	}
+
+	public static void applyConfigSections() {
+		try {
+			modules.read(config.modules);
+			hud.read(config.hud);
+			if (hudModule != null) {
+				HudElement.masterEnabled = hudModule.isEnabled();
+				HudElement.background = hudModule.isEnabled() && hudModule.backgroundEnabled();
+			}
+			modules.recordAllStates();
+			hud.recordAllStates();
+			saveConfig();
+		} catch (Throwable throwable) {
+			Diagnostics.exception("config.apply", throwable);
+			OmniCubeText.sendError("Could not apply the settings; see the diagnostics log.");
+		}
 	}
 
 	/**

@@ -1,6 +1,7 @@
 package dev.omnicube.client.config;
 
 import com.google.gson.JsonObject;
+import dev.omnicube.client.chat.ChatFilter;
 import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.macro.Macro;
 import dev.omnicube.client.waypoint.Waypoint;
@@ -28,6 +29,9 @@ public final class OmniCubeConfig {
 	public JsonObject hud = new JsonObject();
 	public List<Macro> macros = new ArrayList<>();
 	public List<Waypoint> waypoints = new ArrayList<>();
+	public List<ChatFilter> chatFilters = new ArrayList<>();
+	/** Most recent death positions, newest last; capped by DeathCoordsModule. */
+	public List<String> deaths = new ArrayList<>();
 
 	public void sanitize() {
 		if (version < 1) {
@@ -48,11 +52,28 @@ public final class OmniCubeConfig {
 		if (waypoints == null) {
 			waypoints = new ArrayList<>();
 		}
+		if (chatFilters == null) {
+			chatFilters = new ArrayList<>();
+		}
+		if (deaths == null) {
+			deaths = new ArrayList<>();
+		}
 		if (activeWaypoint == null) {
 			activeWaypoint = "";
 		}
 		macros.removeIf(java.util.Objects::isNull);
 		waypoints.removeIf(java.util.Objects::isNull);
+		chatFilters.removeIf(java.util.Objects::isNull);
+		deaths.removeIf(java.util.Objects::isNull);
+		while (chatFilters.size() > 50) {
+			chatFilters.removeLast();
+		}
+		while (deaths.size() > 5) {
+			deaths.removeFirst();
+		}
+		for (ChatFilter filter : chatFilters) {
+			filter.sanitize();
+		}
 		for (Macro macro : macros) {
 			macro.sanitize();
 		}

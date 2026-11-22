@@ -6,6 +6,7 @@ import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.module.ModuleCategory;
 import dev.omnicube.client.util.OmniCubeText;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -24,6 +25,9 @@ public final class OmniCubeScreen extends Screen {
 	private static final int HEADER_HEIGHT = 46;
 	private static final int TAB_FEATURES = 0;
 	private static final int TAB_DIAGNOSTICS = 1;
+
+	/** Read once from the loaded mod metadata; never a hard-coded release number. */
+	private static final String MOD_VERSION = readModVersion();
 
 	private final Screen parent;
 	private String query = "";
@@ -44,6 +48,17 @@ public final class OmniCubeScreen extends Screen {
 		this.parent = parent;
 	}
 
+	private static String readModVersion() {
+		try {
+			return FabricLoader.getInstance().getModContainer("omnicube")
+					.map(container -> container.getMetadata().getVersion().getFriendlyString())
+					.orElse("dev");
+		} catch (Throwable throwable) {
+			// A missing container must not stop the screen from opening.
+			return "dev";
+		}
+	}
+
 	@Override
 	protected void init() {
 		int listX = listX();
@@ -61,7 +76,7 @@ public final class OmniCubeScreen extends Screen {
 		int footerY = this.height - 27;
 		int doneWidth = Math.min(60, Math.max(30, this.width / 5));
 		int doneX = this.width - doneWidth - 10;
-		int buttonWidth = Math.max(24, Math.min(96, (doneX - 14) / 4 - 4));
+		int buttonWidth = Math.max(24, Math.min(96, (doneX - 18) / 5 - 4));
 		int buttonX = 10;
 
 		addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
@@ -83,6 +98,15 @@ public final class OmniCubeScreen extends Screen {
 				this.minecraft.setScreen(new CompatibilityScreen(this));
 			}
 		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		buttonX += buttonWidth + 4;
+
+		Button profilesButton = addRenderableWidget(Button.builder(Component.literal("Profiles"), button -> {
+			if (this.minecraft != null) {
+				this.minecraft.setScreen(new ProfilesScreen(this));
+			}
+		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		Feature profilesFeature = OmniCubeClient.featureById("settings_profiles");
+		profilesButton.active = profilesFeature == null || (profilesFeature.isAvailable() && profilesFeature.isEnabled());
 		buttonX += buttonWidth + 4;
 
 		addRenderableWidget(Button.builder(Component.literal("Reload"), button -> {
@@ -207,7 +231,7 @@ public final class OmniCubeScreen extends Screen {
 
 		graphics.drawString(this.font, "OMNICUBE", 12, 13, accent, true);
 		graphics.drawString(this.font, "Minecraft 1.21.11", 12, 24, 0xFF8A8A8A, false);
-		graphics.drawString(this.font, "0.2.1", 12, 34, 0xFF6F6F6F, false);
+		graphics.drawString(this.font, "v" + MOD_VERSION, 12, 34, 0xFF6F6F6F, false);
 
 		drawCategory(graphics, "All", null, 54, mouseX, mouseY);
 		int y = 54 + 19;

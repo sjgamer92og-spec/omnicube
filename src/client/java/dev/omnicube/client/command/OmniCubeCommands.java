@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.omnicube.client.OmniCubeClient;
 import dev.omnicube.client.compat.ClientCompat;
+import dev.omnicube.client.config.ProfileManager;
 import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.feature.Feature;
 import dev.omnicube.client.gui.OmniCubeScreen;
@@ -12,6 +13,7 @@ import dev.omnicube.client.gui.ChatSearchScreen;
 import dev.omnicube.client.gui.HudEditorScreen;
 import dev.omnicube.client.macro.Macro;
 import dev.omnicube.client.perf.PerfMonitor;
+import dev.omnicube.client.module.impl.ChatFilterModule;
 import dev.omnicube.client.module.impl.MacroModule;
 import dev.omnicube.client.module.impl.WaypointModule;
 import dev.omnicube.client.util.OmniCubeText;
@@ -75,6 +77,42 @@ public final class OmniCubeCommands {
 										.suggests(FEATURE_IDS)
 										.executes(context -> toggle(context.getSource(), StringArgumentType.getString(context, "feature")))))
 						.then(ClientCommandManager.literal("reload").executes(context -> reload(context.getSource())))
+						.then(ClientCommandManager.literal("deaths").executes(context -> deaths(context.getSource())))
+						.then(ClientCommandManager.literal("filter")
+								.then(ClientCommandManager.literal("add")
+										.then(ClientCommandManager.argument("pattern", StringArgumentType.greedyString())
+												.executes(context -> addFilter(context.getSource(),
+														StringArgumentType.getString(context, "pattern"), false))))
+								.then(ClientCommandManager.literal("addregex")
+										.then(ClientCommandManager.argument("pattern", StringArgumentType.greedyString())
+												.executes(context -> addFilter(context.getSource(),
+														StringArgumentType.getString(context, "pattern"), true))))
+								.then(ClientCommandManager.literal("remove")
+										.then(ClientCommandManager.argument("pattern", StringArgumentType.greedyString())
+												.executes(context -> removeFilter(context.getSource(),
+														StringArgumentType.getString(context, "pattern")))))
+								.then(ClientCommandManager.literal("list").executes(context -> listFilters(context.getSource())))
+								.then(ClientCommandManager.literal("clear").executes(context -> clearFilters(context.getSource()))))
+						.then(ClientCommandManager.literal("profile")
+								.then(ClientCommandManager.literal("list").executes(context -> listProfiles(context.getSource())))
+								.then(ClientCommandManager.literal("save")
+										.then(ClientCommandManager.argument("name", StringArgumentType.greedyString())
+												.executes(context -> profileAction(context.getSource(), "save",
+														StringArgumentType.getString(context, "name"), null))))
+								.then(ClientCommandManager.literal("load")
+										.then(ClientCommandManager.argument("name", StringArgumentType.greedyString())
+												.executes(context -> profileAction(context.getSource(), "load",
+														StringArgumentType.getString(context, "name"), null))))
+								.then(ClientCommandManager.literal("delete")
+										.then(ClientCommandManager.argument("name", StringArgumentType.greedyString())
+												.executes(context -> profileAction(context.getSource(), "delete",
+														StringArgumentType.getString(context, "name"), null))))
+								.then(ClientCommandManager.literal("rename")
+										.then(ClientCommandManager.argument("name", StringArgumentType.word())
+												.then(ClientCommandManager.argument("new_name", StringArgumentType.word())
+														.executes(context -> profileAction(context.getSource(), "rename",
+																StringArgumentType.getString(context, "name"),
+																StringArgumentType.getString(context, "new_name")))))))
 						.then(ClientCommandManager.literal("coords").executes(context -> copyCoords(context.getSource())))
 						.then(ClientCommandManager.literal("nbt").executes(context -> showNbt(context.getSource())))
 						.then(ClientCommandManager.literal("screenshots").executes(context -> openScreenshots(context.getSource())))
@@ -386,6 +424,107 @@ public final class OmniCubeCommands {
 					.withStyle(ChatFormatting.GRAY));
 		}
 		return macros.size();
+	}
+
+	private static int deaths(FabricClientCommandSource source) {
+		List<String> deaths = OmniCubeClient.config().deaths;
+		if (deaths.isEmpty()) {
+			source.sendFeedback(Component.literal("[OmniCube] No deaths recorded yet.").withStyle(ChatFormatting.GRAY));
+			return 0;
+		}
+		source.sendFeedback(Component.literal("[OmniCube] Last " + deaths.size() + " death(s):")
+				.withStyle(ChatFormatting.GREEN));
+		for (int i = deaths.size() - 1; i >= 0; i--) {
+			source.sendFeedback(Component.literal("  " + deaths.get(i)).withStyle(ChatFormatting.GRAY));
+		}
+		return deaths.size();
+	}
+
+	private static int addFilter(FabricClientCommandSource source, String pattern, boolean regex) {
+		ChatFilterModule module = OmniCubeClient.chatFilter();
+		if (module == null) {
+			source.sendError(Component.literal("Chat Filters are unavailable."));
+			return 0;
+		}
+		String problem = module.add(pattern, regex);
+		if (problem != null) {
+			source.sendError(Component.literal(problem));
+			return 0;
+		}
+		source.sendFeedback(Component.literal("[OmniCube] Added " + (regex ? "regex " : "keyword ")
+				+ "filter: " + pattern).withStyle(ChatFormatting.GREEN));
+		return 1;
+	}
+
+	private static int removeFilter(FabricClientCommandSource source, String pattern) {
+		ChatFilterModule module = OmniCubeClient.chatFilter();
+		if (module == null || !module.remove(pattern)) {
+			source.sendError(Component.literal("No saved filter matches '" + pattern + "'."));
+			return 0;
+		}
+		source.sendFeedback(Component.literal("[OmniCube] Removed the filter '" + pattern + "'.")
+				.withStyle(ChatFormatting.GREEN));
+		return 1;
+	}
+
+	private static int listFilters(FabricClientCommandSource source) {
+		ChatFilterModule module = OmniCubeClient.chatFilter();
+		if (module == null) {
+			return 0;
+		}
+		var filters = module.filters();
+		if (filters.isEmpty()) {
+			source.sendFeedback(Component.literal("[OmniCube] No chat filters yet. Use /omnicube filter add <text>.")
+					.withStyle(ChatFormatting.GRAY));
+			return 0;
+		}
+		source.sendFeedback(Component.literal("[OmniCube] " + filters.size() + " chat filter(s), "
+				+ module.statusLine()).withStyle(ChatFormatting.GREEN));
+		for (var filter : filters) {
+			source.sendFeedback(Component.literal("  " + filter.describe()).withStyle(ChatFormatting.GRAY));
+		}
+		return filters.size();
+	}
+
+	private static int clearFilters(FabricClientCommandSource source) {
+		ChatFilterModule module = OmniCubeClient.chatFilter();
+		if (module == null) {
+			return 0;
+		}
+		int count = module.clear();
+		source.sendFeedback(Component.literal("[OmniCube] Cleared " + count + " chat filter(s).")
+				.withStyle(ChatFormatting.GREEN));
+		return count;
+	}
+
+	private static int listProfiles(FabricClientCommandSource source) {
+		ProfileManager.namesAsync(names -> {
+			source.sendFeedback(Component.literal("[OmniCube] Built-in profiles: "
+					+ String.join(", ", ProfileManager.builtInNames())).withStyle(ChatFormatting.GREEN));
+			if (names.isEmpty()) {
+				source.sendFeedback(Component.literal("  No saved profiles yet. Use /omnicube profile save <name>.")
+						.withStyle(ChatFormatting.GRAY));
+				return;
+			}
+			source.sendFeedback(Component.literal("  Saved: " + String.join(", ", names))
+					.withStyle(ChatFormatting.GRAY));
+		});
+		return 1;
+	}
+
+	private static int profileAction(FabricClientCommandSource source, String action, String name, String newName) {
+		java.util.function.Consumer<String> result = message -> source.sendFeedback(
+				Component.literal("[OmniCube] " + message).withStyle(ChatFormatting.GRAY));
+		switch (action) {
+			case "save" -> ProfileManager.saveAsync(name, result);
+			case "load" -> ProfileManager.loadAsync(name, result);
+			case "delete" -> ProfileManager.deleteAsync(name, result);
+			case "rename" -> ProfileManager.renameAsync(name, newName, result);
+			default -> {
+				return 0;
+			}
+		}
+		return 1;
 	}
 
 	private static int timer(FabricClientCommandSource source, String action) {
