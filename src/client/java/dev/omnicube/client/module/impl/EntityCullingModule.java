@@ -13,8 +13,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Conservative visibility check for mobs. Results are cached between render
@@ -25,9 +25,11 @@ public final class EntityCullingModule extends Module {
 	private final Setting.Num maxDistance = add(new Setting.Num("max_distance", "Max distance", 64.0D, 16.0D, 128.0D, 8.0D));
 	private final Setting.Num interval = add(new Setting.Num("interval", "Recheck ticks", 5.0D, 2.0D, 20.0D, 1.0D));
 
-	private final Map<Integer, CacheEntry> cache = new HashMap<>();
-	private long ticks;
-	private int checksThisTick;
+	// Written from the render thread, cleared from the client thread; a plain HashMap
+	// could corrupt or spin if a world change cleared it mid-render.
+	private final Map<Integer, CacheEntry> cache = new ConcurrentHashMap<>();
+	private volatile long ticks;
+	private volatile int checksThisTick;
 	private Level lastLevel;
 	private boolean failureLogged;
 
@@ -77,8 +79,8 @@ public final class EntityCullingModule extends Module {
 				return false;
 			}
 			CacheEntry cached = cache.get(entity.getId());
-			if (cached != null && ticks - cached.tick < interval.intValue()) {
-				return cached.cull;
+			if (cached != null && ticks - cached.tick() < interval.intValue()) {
+				return cached.cull();
 			}
 			if (checksThisTick >= 24) {
 				return false;

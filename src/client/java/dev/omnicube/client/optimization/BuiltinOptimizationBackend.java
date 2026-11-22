@@ -31,7 +31,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 
 	@Override
 	public void capture(Minecraft client) {
-		if (captured || client.options == null) {
+		if (captured || client == null || client.options == null) {
 			return;
 		}
 		Options options = client.options;
@@ -51,7 +51,7 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 
 	@Override
 	public void restore(Minecraft client) {
-		if (!captured || client.options == null) {
+		if (!captured || client == null || client.options == null) {
 			return;
 		}
 		Options options = client.options;
@@ -109,9 +109,11 @@ public final class BuiltinOptimizationBackend implements OptimizationBackend {
 
 		if (settings.adaptiveParticles()) {
 			try {
+				// Recovery restores what the player had, not always ALL: the old code raised
+				// a saved MINIMAL/DECREASED particle setting to ALL once FPS recovered.
 				ParticleStatus desired = veryLow ? ParticleStatus.MINIMAL
 						: low ? ParticleStatus.DECREASED
-						: recovered ? ParticleStatus.ALL
+						: recovered && originalParticles != null ? originalParticles
 						: options.particles().get();
 				if (desired != options.particles().get()) {
 					options.particles().set(desired);

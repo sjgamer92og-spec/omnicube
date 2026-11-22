@@ -26,10 +26,29 @@ public final class ChatLogModule extends Module {
 	private static final AtomicBoolean DROP_WARNED = new AtomicBoolean();
 	private static final AtomicBoolean WRITE_FAILED = new AtomicBoolean();
 
+	private static Thread writerThread;
+
 	static {
-		Thread writer = new Thread(ChatLogModule::writeLoop, "OmniCube-ChatLog");
-		writer.setDaemon(true);
-		writer.start();
+		startWriter();
+	}
+
+	/** Starts the writer if it is not running (first load or a restart after a failure). */
+	private static synchronized void startWriter() {
+		if (writerThread != null && writerThread.isAlive()) {
+			return;
+		}
+		Thread thread = new Thread(ChatLogModule::writeLoop, "OmniCube-ChatLog");
+		thread.setDaemon(true);
+		writerThread = thread;
+		thread.start();
+	}
+
+	@Override
+	protected void onEnable() {
+		// A failed write used to disable chat logging for the rest of the session even
+		// after the player turned the module back on.
+		WRITE_FAILED.set(false);
+		startWriter();
 	}
 
 	private final Setting.Bool logChat = add(new Setting.Bool("log_chat", "Log player chat", true));

@@ -57,6 +57,11 @@ public final class StreamerModule extends Module {
 		if (text == null || text.isEmpty()) {
 			return text;
 		}
+		// Streamer Mode is the only switch for redaction. Without this guard the
+		// diagnostics log and the chat log were redacted even while the module was off.
+		if (!isEnabled()) {
+			return text;
+		}
 		String result = text;
 		try {
 			result = IPV4.matcher(result).replaceAll("[address hidden]");

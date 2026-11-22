@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.5+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.6+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
@@ -15,6 +15,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 **v0.2.1 is a bug-fix round with no new features.** It fixes the reasons features could fail to appear (a single startup failure aborting every later registration, a config list clipped by an unreleased scissor, over-eager compatibility rules and FPS Safety disabling features by default) and adds a diagnostics log, an in-game **Diagnostics** tab and `/omnicube diag`. Details are in the release notes and [CHANGELOG.md](CHANGELOG.md).
 
 **v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
+
+**v0.2.6 is a pure bug-fix round with a new loading screen.** A full audit of the client code fixed the config screen hiding every feature description, overlapping footer buttons on the Diagnostics tab, a reversed waypoint compass, duplicate death waypoints, Streamer Mode redacting diagnostics while off, unredacted server messages and doubled timestamps in the chat log, a chat-log writer that stayed dead after one failure, several Performance and adaptive-quality bugs (particles forced back to ALL, ignored adaptive switches, stale FPS thresholds and presets, unrestored fallback options), Visual Toggles leaking its video changes into `options.txt`, failed or compatibility-blocked modules not running their cleanup, an entity-culling cache touched from two threads, Auto Sprint ignoring a remapped forward key, a frozen TNT fuse label, Fullbright log flooding, duplicate waypoint/macro names and a Default profile that left the HUD layout alone. The Mojang loading screen is replaced by a redesigned animated cube splash.
 
 **v0.2.5 is the light-features round built on a bug-fix pass.** Config saves are now asynchronous and debounced (the render thread never waits for the disk), Fullbright gained a **Keep shading** option for Full mode and detects Sodium/Iris so a bypassed lightmap hook is logged rather than silently ignored, and the config screen finally reads its version from the mod metadata. New, each with a toggle: **Chat Filters** (keyword or regex, hide or highlight, 50-pattern cap, regexes validated when added), **RAM Warning**, **Visual Toggles** (particles, rain/snow, view bobbing, damage tilt), **Settings Profiles** (Default, Low-end, Streaming, PvP plus your own files), **Death Coordinates**, **Low Durability Warning**, an **Item Counter HUD** element and a **Tool Swap Helper** keybind.
 
@@ -38,7 +40,7 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Fullbright** — real full brightness: the lightmap light value is overridden, so caves, night and dark rooms are lit rather than merely softened. Modes **Full**, **Gamma (soft)** and **Night vision style**, a brightness slider, no change to your saved gamma option, and the hook state is visible in Diagnostics.
 - **Zoom** — hold a key to narrow the field of view with a smooth, adjustable animation; your saved FOV is never changed.
 - **Free Look** — hold a key to look around within a configurable arc (110° by default) without turning your player; it stays in first person and eases back when released.
-- **Custom Splash** — replaces the Mojang studios loading screen with handled rectangles, a progress bar, key hints and the OmniCube wordmark.
+- **Custom Splash** — replaces the Mojang studios loading screen with an animated 3D wireframe cube, a mint glow, a drifting grid, a glowing wordmark, a segmented progress bar with a shine sweep and rotating tips. Plain rectangle/text drawing, with an **Animate cube and shimmer** toggle for low-end machines.
 - **Crosshair** — shape, colour, outline and size, drawn through Fabric's HUD registry.
 
 ### Player
@@ -408,8 +410,9 @@ Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.
 | 0.2.4 | Real lightmap-based Fullbright with Full / Gamma / Night vision modes and a brightness slider; hook status in diagnostics with a logged gamma fallback; HUD and splash bug fixes |
 | 0.2.3 | Bounded first-person free look with smooth return; frame-animated zoom; custom OmniCube loading screen; full-brightness fix; armour material names and durability colours; auto-hiding empty HUD panels; TNT fuse crash fix |
 | 0.2.5 | Asynchronous debounced config saves and Fullbright polish (Keep shading, Sodium/Iris detection); chat filters, RAM warning, visual toggles, settings profiles, death coordinates, low durability warning, item counter HUD and tool swap helper |
+| 0.2.6 | Bug-fix audit: config-screen tooltips and footer overlap, waypoint direction, duplicate waypoints, Streamer Mode redaction, chat-log timestamps and redaction, performance particle and adaptive bugs, option leaks, cleanup on failure/blocking, thread-safe entity culling, Auto Sprint keybind, TNT fuse interpolation, Fullbright log flooding; redesigned animated loading screen |
 
-### Next — 0.2.6
+### Next — 0.2.7
 
 Still queued from the 0.2.4 plan and deferred by choice: a resource-pack quick toggle and a better server list, plus a hand-swing visual toggle (no safe client-side hook was found in 1.21.11 without breaking the first-person hand render).
 

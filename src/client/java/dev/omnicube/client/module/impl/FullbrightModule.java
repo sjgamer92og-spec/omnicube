@@ -98,21 +98,30 @@ public final class FullbrightModule extends Module {
 	 * replacement coordinate, or -1 to leave vanilla's value alone.
 	 */
 	public int lightOverride(int blockLight, int skyLight) {
-		if (modeCode < 0) {
+		int mode = modeCode;
+		if (mode < 0) {
 			return -1;
 		}
-		if (modeCode == MODE_FULL) {
-			if (!cachedShading) {
-				return FULL_BRIGHT;
+		try {
+			if (mode == MODE_FULL) {
+				if (!cachedShading) {
+					return FULL_BRIGHT;
+				}
+				// Lift every coordinate most of the way to 15 but keep the original
+				// relative brightness, so caves stay readable without looking flat.
+				return (blend(blockLight) << 4) | (blend(skyLight) << 20);
 			}
-			// Lift every coordinate most of the way to 15 but keep the original
-			// relative brightness, so caves stay readable without looking flat.
-			return (blend(blockLight) << 4) | (blend(skyLight) << 20);
+			int block = Math.max(blockLight, lift);
+			// Night vision style keeps a little sky tint so it does not look flat white.
+			int sky = Math.max(skyLight, mode == MODE_NIGHT_VISION ? Math.max(0, lift - 2) : lift);
+			return (block << 4) | (sky << 20);
+		} catch (Throwable throwable) {
+			// This runs per rendered vertex. Log once and switch the override off instead
+			// of flooding the diagnostics log every vertex of every frame.
+			modeCode = -1;
+			Diagnostics.exception("fullbright.lightmap.override", throwable);
+			return -1;
 		}
-		int block = Math.max(blockLight, lift);
-		// Night vision style keeps a little sky tint so it does not look flat white.
-		int sky = Math.max(skyLight, modeCode == MODE_NIGHT_VISION ? Math.max(0, lift - 2) : lift);
-		return (block << 4) | (sky << 20);
 	}
 
 	private void refreshCache() {

@@ -120,13 +120,21 @@ public final class ProfileManager {
 			report(result, "The built-in profile '" + name + "' cannot be overwritten.");
 			return;
 		}
+		// Snapshot on the calling (client) thread: the live config is mutated by ticks and
+		// screens, and deepCopying it from the IO thread raced those writes.
+		JsonObject root = new JsonObject();
+		try {
+			OmniCubeConfig config = OmniCubeClient.config();
+			root.addProperty("version", OmniCubeConfig.CURRENT_VERSION);
+			root.add("modules", config.modules.deepCopy());
+			root.add("hud", config.hud.deepCopy());
+		} catch (Throwable throwable) {
+			Diagnostics.exception("profiles.snapshot", throwable);
+			report(result, "Could not read the current settings: " + Diagnostics.describe(throwable));
+			return;
+		}
 		IO.submit(() -> {
 			try {
-				OmniCubeConfig config = OmniCubeClient.config();
-				JsonObject root = new JsonObject();
-				root.addProperty("version", OmniCubeConfig.CURRENT_VERSION);
-				root.add("modules", config.modules.deepCopy());
-				root.add("hud", config.hud.deepCopy());
 				Path path = directory().resolve(name + ".json");
 				writeAtomic(path, GSON.toJson(root));
 				lastResult = "saved profile '" + name + "'";
@@ -272,6 +280,11 @@ public final class ProfileManager {
 				setting.reset();
 			}
 			feature.setEnabled(defaultStateOf(feature));
+		}
+		// The Default profile also restores the stock HUD layout; it used to leave
+		// whatever positions the player had dragged their elements to.
+		for (dev.omnicube.client.hud.HudElement element : OmniCubeClient.hud().elements()) {
+			element.resetPosition();
 		}
 		// The features were changed directly, so persist them instead of re-reading
 		// the (still stale) saved modules section, which would undo the profile.

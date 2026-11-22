@@ -11,11 +11,12 @@ import dev.omnicube.client.setting.Setting;
  */
 public final class SplashModule extends Module {
 	private final Setting.Bool progress = add(new Setting.Bool("progress", "Show loading progress", true));
-	private final Setting.Bool tips = add(new Setting.Bool("tips", "Show key hints", true));
+	private final Setting.Bool tips = add(new Setting.Bool("tips", "Show rotating tips", true));
+	private final Setting.Bool animations = add(new Setting.Bool("animations", "Animate cube and shimmer", true));
 
 	public SplashModule() {
 		super("splash", "Custom Splash",
-				"Draws an OmniCube loading screen instead of the Mojang studios logo while the game starts.",
+				"Draws an animated OmniCube loading screen (rotating cube, glow, segmented progress bar) instead of the Mojang studios logo while the game starts.",
 				ModuleCategory.RENDER, true);
 	}
 
@@ -25,5 +26,14 @@ public final class SplashModule extends Module {
 
 	public boolean showTips() {
 		return tips.get();
+	}
+
+	public boolean animations() {
+		return animations.get();
+	}
+
+	/** Safe low-end values, applied by the Low-end preset. */
+	public void applyLowEndValues() {
+		animations.set(false);
 	}
 }

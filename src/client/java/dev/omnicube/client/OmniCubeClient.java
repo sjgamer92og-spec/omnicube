@@ -215,6 +215,9 @@ public final class OmniCubeClient implements ClientModInitializer {
 						if (streamerModule != null) {
 							display = streamerModule.redact(display);
 						}
+						// Keep the redacted, undecorated text for the log: logging the
+						// timestamped line added the chat timestamp on top of the log timestamp.
+						Component logged = display;
 						boolean timestamped = chatModule != null && chatModule.timestampEnabled();
 						if (timestamped) {
 							display = chatModule.decorate(display);
@@ -225,7 +228,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 						boolean changed = timestamped || !display.equals(message);
 						if (changed) {
 							if (chatLogModule != null) {
-								chatLogModule.recordChat(display.getString());
+								chatLogModule.recordChat(logged.getString());
 							}
 							Minecraft client = Minecraft.getInstance();
 							Component finalDisplay = display;
@@ -282,13 +285,17 @@ public final class OmniCubeClient implements ClientModInitializer {
 		safe("chat.log.callback", () -> ClientReceiveMessageEvents.CHAT.register(
 				(message, signedMessage, sender, params, timestamp) -> {
 					if (chatLogModule != null) {
-						chatLogModule.recordChat(message.getString());
+						// Redact first: the log used to keep the unredacted line that Streamer
+						// Mode only hid on screen.
+						Component logged = streamerModule == null ? message : streamerModule.redact(message);
+						chatLogModule.recordChat(logged.getString());
 					}
 				}));
 
 		safe("chat.game.callback", () -> ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
 			if (chatLogModule != null && !overlay) {
-				chatLogModule.recordSystem(message.getString());
+				Component logged = streamerModule == null ? message : streamerModule.redact(message);
+				chatLogModule.recordSystem(logged.getString());
 			}
 		}));
 
@@ -332,6 +339,7 @@ public final class OmniCubeClient implements ClientModInitializer {
 				Diagnostics.event("world", "joined world");
 				worldTicks = 0;
 				lowFpsTicks = 0;
+				fpsSampleTicks = 0;
 				fpsGuardArmed = true;
 				try {
 					if (performanceModule != null && performanceModule.isEnabled()) {
@@ -717,9 +725,16 @@ public final class OmniCubeClient implements ClientModInitializer {
 		if (ramWarningModule != null && !ramWarningModule.isEnabled()) {
 			ramWarningModule.setEnabledWithReason(true, "Enabled by Low-end preset");
 		}
-		if (visualTogglesModule != null && !visualTogglesModule.isEnabled()) {
+		if (visualTogglesModule != null) {
+			// Apply the safe values even when the module is already on; it used to skip
+			// them, so a running Visual Toggles module kept its old expensive settings.
 			visualTogglesModule.applyLowEndValues();
-			visualTogglesModule.setEnabledWithReason(true, "Enabled by Low-end preset");
+			if (!visualTogglesModule.isEnabled()) {
+				visualTogglesModule.setEnabledWithReason(true, "Enabled by Low-end preset");
+			}
+		}
+		if (splashModule != null) {
+			splashModule.applyLowEndValues();
 		}
 		String performance = "already on";
 		if (performanceModule != null) {
@@ -758,6 +773,11 @@ public final class OmniCubeClient implements ClientModInitializer {
 			}
 			if (performanceModule != null) {
 				performanceModule.restoreForSession();
+			}
+			if (visualTogglesModule != null) {
+				// Put back the video options this module changed so they are not written
+				// into options.txt as if the player had chosen them.
+				visualTogglesModule.restoreForSession();
 			}
 		} catch (Throwable throwable) {
 			Diagnostics.exception("options.restore", throwable);

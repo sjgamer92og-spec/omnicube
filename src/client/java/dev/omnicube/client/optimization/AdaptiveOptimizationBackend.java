@@ -61,6 +61,8 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 	private QualityPolicy.Engine engine;
 	private long lastDecisionMs;
 	private int appliedTier = -1;
+	/** Last tick's settings, so the scaling step honours the adaptive toggles. */
+	private OptimizationSettings lastSettings;
 
 	@Override
 	public String id() {
@@ -112,14 +114,29 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 
 	@Override
 	public void restore(Minecraft client) {
-		if (!captured || client == null || client.options == null) {
-			captured = false;
+		if (!captured && !usingFallback) {
+			appliedTier = -1;
+			engine = null;
 			return;
 		}
-		restoreOptions(client.options);
+		if (client != null && client.options != null && captured) {
+			restoreOptions(client.options);
+		}
 		captured = false;
 		appliedTier = -1;
 		engine = null;
+		lastSettings = null;
+		if (usingFallback) {
+			// After a failure this backend owns nothing, but the fallback captured and
+			// changed options of its own; those were never restored before.
+			usingFallback = false;
+			failed = false;
+			try {
+				fallback.restore(client);
+			} catch (Throwable throwable) {
+				Diagnostics.exception("performance.adaptive.fallback_restore", throwable);
+			}
+		}
 		Diagnostics.performance("adaptive disabled; original video settings restored");
 		Diagnostics.status("performance_backend", "Adaptive quality (hardware tiers)", "backend", "DISABLED",
 				"Disabled by user; original video settings restored");
@@ -146,6 +163,7 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 			if (!captured || client == null || client.options == null) {
 				return;
 			}
+			lastSettings = settings;
 			if (!rendererQueried) {
 				// The GL renderer string is only readable on the render thread, so the
 				// probe runs here rather than during config load.
@@ -154,7 +172,21 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 				hardware = HardwareProbe.current();
 				HardwareTier detected = hardware.tier();
 				if (detected != tier) {
+					HardwareTier previous = tier;
 					tier = detected;
+					// The preset was applied before the GL renderer was known, so a machine
+					// that is really weaker than the initial guess kept the wrong preset and
+					// the policy kept the old FPS thresholds. Retune once the tier is known.
+					if (detected.ordinal() < previous.ordinal()) {
+						preset = QualityPreset.fromTier(tier);
+						applyPreset(client.options);
+						baselineRenderDistance = client.options.renderDistance().get();
+						baselineSimulationDistance = client.options.simulationDistance().get();
+						baselineEntityDistance = client.options.entityDistanceScaling().get();
+						appliedTier = -1;
+					}
+					engine = new QualityPolicy.Engine(limits(), QualityPolicy.Tuning.defaults());
+					engine.reset();
 					Diagnostics.performance("adaptive tier changed to " + tier.displayName()
 							+ " (" + hardware.summary() + ")");
 				}
@@ -229,9 +261,8 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 			case 0 -> options.particles().set(ParticleStatus.MINIMAL);
 			case 1 -> options.particles().set(ParticleStatus.DECREASED);
 			case 2 -> {
-				if (originalParticles != ParticleStatus.ALL) {
-					options.particles().set(ParticleStatus.ALL);
-				}
+				// Balanced keeps the player's particle setting. It used to force ALL,
+				// which raised a deliberately reduced particle setting.
 			}
 			default -> {
 				// Keep the player's value.
@@ -255,18 +286,25 @@ public final class AdaptiveOptimizationBackend implements OptimizationBackend {
 			return;
 		}
 		appliedTier = stepTier;
+		OptimizationSettings settings = lastSettings;
 		double scale = QualityPolicy.SCALES[Math.max(0, Math.min(QualityPolicy.MAX_TIER, stepTier))];
-		int render = Math.max(MIN_DISTANCE, (int) Math.round(baselineRenderDistance * scale));
-		int simulation = Math.max(MIN_DISTANCE, (int) Math.round(baselineSimulationDistance * scale));
-		double entity = Math.max(0.5D, Math.min(baselineEntityDistance, baselineEntityDistance * scale));
-		if (render != options.renderDistance().get()) {
-			options.renderDistance().set(render);
+		// Respect the module's own adaptive switches. They used to be ignored on this
+		// backend, so turning "Reduce render distance under load" off still scaled it.
+		if (settings == null || settings.adaptiveRenderDistance()) {
+			int render = Math.max(MIN_DISTANCE, (int) Math.round(baselineRenderDistance * scale));
+			int simulation = Math.max(MIN_DISTANCE, (int) Math.round(baselineSimulationDistance * scale));
+			if (render != options.renderDistance().get()) {
+				options.renderDistance().set(render);
+			}
+			if (simulation != options.simulationDistance().get()) {
+				options.simulationDistance().set(simulation);
+			}
 		}
-		if (simulation != options.simulationDistance().get()) {
-			options.simulationDistance().set(simulation);
-		}
-		if (Math.abs(entity - options.entityDistanceScaling().get()) > 0.001D) {
-			options.entityDistanceScaling().set(entity);
+		if (settings == null || settings.adaptiveEntityDistance()) {
+			double entity = Math.max(0.5D, Math.min(baselineEntityDistance, baselineEntityDistance * scale));
+			if (Math.abs(entity - options.entityDistanceScaling().get()) > 0.001D) {
+				options.entityDistanceScaling().set(entity);
+			}
 		}
 	}
 

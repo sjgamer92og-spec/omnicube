@@ -1,5 +1,16 @@
 # OmniCube roadmap
 
+## Released — v0.2.6 (Minecraft 1.21.11)
+
+- Full bug-audit pass with no new features: config-screen tooltips and overlapping footers, waypoint
+  compass direction, duplicate death waypoints, Streamer Mode redaction, chat-log timestamps and
+  unredacted server lines, chat-log writer restart, performance particle/adaptive-toggle/restore
+  bugs, preset particle inflation, Visual Toggles option leaks, cleanup on failed or blocked
+  modules, thread-safe entity culling, Auto Sprint keybind, TNT fuse interpolation, Fullbright log
+  flooding, duplicate waypoint/macro names, Default profile HUD reset and stale profile selection
+- Redesigned loading screen: animated wireframe cube, glow, grid backdrop, glowing wordmark,
+  segmented progress bar with shimmer and rotating tips; an animation toggle and Low-end value
+
 ## Released — v0.2.5 (Minecraft 1.21.11)
 
 - Asynchronous, debounced, atomic config saves on a background thread; shutdown flush and logged failures
@@ -73,16 +84,11 @@
 - Compatibility registry, auto-disable, Compatibility screen and `/omnicube compat`
 - Low-end preset, FPS Safety and opt-in `/omnicube perf` profiler
 
-## Next — v0.2.5 candidates (light features, each with a toggle)
+## Next — v0.2.7 candidates
 
-- Chat Filters (precompiled keyword/regex, hide or highlight, max 50, bad regex rejected)
-- RAM Warning (roughly once per second, default 85%, at most once per minute)
-- Animation and particle toggles (block break, rain, smoke, hand swing, screen shake)
-- Settings Profiles (Default, Low-end, Streaming, PvP; file I/O off the render thread)
-- Death coordinates in chat with a short recent-deaths list
-- Low durability warning for held tool and armour (configurable %, throttled)
-- Item counter HUD for a chosen item, refreshed only when the inventory changes
-- Hotbar/tool swap helper keybind (off by default, no per-tick scanning)
+Still queued from the 0.2.4 plan: a resource-pack quick toggle and a better server list, plus a
+hand-swing visual toggle once a safe client-side hook exists in 1.21.11 (cancelling the first-person
+hand render breaks rendering, so it stays out until then).
 
 ## Earlier v0.2.x candidates
 

@@ -36,6 +36,10 @@ public final class WaypointModule extends Module {
 		boolean dead = player.getHealth() <= 0.0F;
 		if (dead && !deathRecorded && deathMarkers.get()) {
 			deathRecorded = true;
+			// Keep exactly one death marker: adding a fresh "Death" on every death used
+			// to leave a duplicate waypoint per death in the config and the HUD list.
+			OmniCubeClient.config().waypoints.removeIf(waypoint -> waypoint != null
+					&& "Death".equalsIgnoreCase(waypoint.name));
 			add("Death", player.getX(), player.getY(), player.getZ());
 			OmniCubeText.send("Death waypoint saved in " + dimensionName(client));
 		} else if (!dead) {
@@ -63,8 +67,20 @@ public final class WaypointModule extends Module {
 
 	public Waypoint add(String name, double x, double y, double z, String dimension) {
 		String cleanName = name == null || name.isBlank() ? "Waypoint" : name.strip();
-		Waypoint waypoint = new Waypoint(cleanName, x, y, z, dimension == null ? "" : dimension,
-				OmniCubeClient.config().accentArgb());
+		String cleanDimension = dimension == null ? "" : dimension;
+		// Re-using a name moves that waypoint instead of adding a second one with the
+		// same name, which made set/remove ambiguous and duplicated the HUD entry.
+		for (Waypoint existing : OmniCubeClient.config().waypoints) {
+			if (existing != null && cleanName.equalsIgnoreCase(existing.name)) {
+				existing.x = x;
+				existing.y = y;
+				existing.z = z;
+				existing.dimension = cleanDimension;
+				OmniCubeClient.saveConfig();
+				return existing;
+			}
+		}
+		Waypoint waypoint = new Waypoint(cleanName, x, y, z, cleanDimension, OmniCubeClient.config().accentArgb());
 		OmniCubeClient.config().waypoints.add(waypoint);
 		OmniCubeClient.saveConfig();
 		return waypoint;

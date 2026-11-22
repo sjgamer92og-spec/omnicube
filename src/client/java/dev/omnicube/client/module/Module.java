@@ -97,10 +97,21 @@ public abstract class Module implements Feature {
 	}
 
 	public void blockForCompatibility(String reason) {
+		boolean wasEnabled = this.enabled;
 		this.unavailableReason = reason == null ? "" : reason;
 		this.reason = this.unavailableReason;
 		this.autoDisabled = true;
 		this.enabled = false;
+		if (wasEnabled) {
+			// A module that was already running owns live state or changed options;
+			// blocking it must run the same cleanup as a normal disable.
+			try {
+				onDisable();
+			} catch (Throwable throwable) {
+				Diagnostics.exception(id + ".compat_cleanup", throwable);
+				OmniCubeMod.LOGGER.warn("[OmniCube] Module '{}' failed during compatibility cleanup.", id, throwable);
+			}
+		}
 		recordState();
 	}
 
@@ -121,9 +132,20 @@ public abstract class Module implements Feature {
 
 	@Override
 	public void markFailed(String reason) {
+		boolean wasEnabled = this.enabled;
 		this.enabled = false;
 		this.autoDisabled = true;
 		this.reason = reason == null || reason.isBlank() ? "Failed (see stack trace)" : reason;
+		if (wasEnabled) {
+			// A module that failed mid-session still owns whatever it changed (video
+			// options, captured state), so run its cleanup exactly like a normal disable.
+			try {
+				onDisable();
+			} catch (Throwable throwable) {
+				Diagnostics.exception(id + ".cleanup", throwable);
+				OmniCubeMod.LOGGER.warn("[OmniCube] Module '{}' also failed during cleanup.", id, throwable);
+			}
+		}
 		recordState();
 	}
 

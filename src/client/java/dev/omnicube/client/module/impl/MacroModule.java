@@ -69,7 +69,18 @@ public final class MacroModule extends Module {
 	}
 
 	public Macro add(String name, String command, int key) {
-		Macro macro = new Macro(name, command, key);
+		// Re-using a macro name updates it; duplicates made add/remove/run ambiguous.
+		String clean = name == null || name.isBlank() ? "Macro" : name.strip();
+		for (Macro existing : OmniCubeClient.config().macros) {
+			if (existing != null && clean.equalsIgnoreCase(existing.name)) {
+				existing.command = command;
+				existing.key = key;
+				existing.enabled = true;
+				OmniCubeClient.saveConfig();
+				return existing;
+			}
+		}
+		Macro macro = new Macro(clean, command, key);
 		OmniCubeClient.config().macros.add(macro);
 		OmniCubeClient.saveConfig();
 		return macro;

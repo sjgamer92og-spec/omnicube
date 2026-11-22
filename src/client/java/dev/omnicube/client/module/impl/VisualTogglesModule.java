@@ -140,6 +140,15 @@ public final class VisualTogglesModule extends Module {
 		}
 	}
 
+	/**
+	 * Restores the player's original video options when leaving the world or quitting,
+	 * without turning the module off. The next tick captures them again and re-applies
+	 * the toggles, so options.txt never keeps OmniCube's temporary values.
+	 */
+	public void restoreForSession() {
+		restore();
+	}
+
 	/** Safe low-end values, applied by the Low-end preset before the module is enabled. */
 	public void applyLowEndValues() {
 		reduceParticles.set(true);

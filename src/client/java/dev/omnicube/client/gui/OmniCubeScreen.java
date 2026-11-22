@@ -42,6 +42,8 @@ public final class OmniCubeScreen extends Screen {
 	private Button openLogButton;
 	private Button copyReportButton;
 	private Button refreshDiagnosticsButton;
+	/** Feature-tab footer buttons, hidden while the Diagnostics tab is open. */
+	private final List<Button> featureOnlyButtons = new ArrayList<>();
 
 	public OmniCubeScreen(Screen parent) {
 		super(Component.literal("OmniCube"));
@@ -79,25 +81,25 @@ public final class OmniCubeScreen extends Screen {
 		int buttonWidth = Math.max(24, Math.min(96, (doneX - 18) / 5 - 4));
 		int buttonX = 10;
 
-		addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
+		featureOnlyButtons.add(addRenderableWidget(Button.builder(Component.literal("HUD"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new HudEditorScreen(this));
 			}
-		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build()));
 		buttonX += buttonWidth + 4;
 
-		addRenderableWidget(Button.builder(Component.literal("Macros"), button -> {
+		featureOnlyButtons.add(addRenderableWidget(Button.builder(Component.literal("Macros"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new MacroScreen(this));
 			}
-		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build()));
 		buttonX += buttonWidth + 4;
 
-		addRenderableWidget(Button.builder(Component.literal("Compat"), button -> {
+		featureOnlyButtons.add(addRenderableWidget(Button.builder(Component.literal("Compat"), button -> {
 			if (this.minecraft != null) {
 				this.minecraft.setScreen(new CompatibilityScreen(this));
 			}
-		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build()));
 		buttonX += buttonWidth + 4;
 
 		Button profilesButton = addRenderableWidget(Button.builder(Component.literal("Profiles"), button -> {
@@ -107,13 +109,14 @@ public final class OmniCubeScreen extends Screen {
 		}).bounds(buttonX, footerY, buttonWidth, 20).build());
 		Feature profilesFeature = OmniCubeClient.featureById("settings_profiles");
 		profilesButton.active = profilesFeature == null || (profilesFeature.isAvailable() && profilesFeature.isEnabled());
+		featureOnlyButtons.add(profilesButton);
 		buttonX += buttonWidth + 4;
 
-		addRenderableWidget(Button.builder(Component.literal("Reload"), button -> {
+		featureOnlyButtons.add(addRenderableWidget(Button.builder(Component.literal("Reload"), button -> {
 			OmniCubeClient.reloadConfig();
 			refresh();
 			refreshDiagnostics();
-		}).bounds(buttonX, footerY, buttonWidth, 20).build());
+		}).bounds(buttonX, footerY, buttonWidth, 20).build()));
 
 		addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
 				.bounds(doneX, footerY, doneWidth, 20).build());
@@ -149,6 +152,11 @@ public final class OmniCubeScreen extends Screen {
 		if (search != null) {
 			search.visible = features;
 			search.setFocused(features && search.isFocused());
+		}
+		for (Button button : featureOnlyButtons) {
+			if (button != null) {
+				button.visible = features;
+			}
 		}
 		if (openLogButton != null) {
 			openLogButton.visible = !features;
@@ -278,11 +286,13 @@ public final class OmniCubeScreen extends Screen {
 			if (hovered != null) {
 				String tooltip = hovered.description();
 				String reason = hovered.stateReason();
-				if (!hovered.isAvailable() || !reason.isBlank()) {
+				// Show the description first. Only a real problem (blocked, failed or
+				// auto-disabled) replaces it; the ordinary "Enabled (default)" reason used
+				// to hide every description in the list.
+				if (!hovered.isAvailable()) {
+					tooltip = hovered.unavailableReason();
+				} else if (reason != null && (reason.startsWith("Failed") || reason.startsWith("Hidden"))) {
 					tooltip = reason;
-					if (!hovered.isAvailable()) {
-						tooltip = hovered.unavailableReason();
-					}
 				}
 				graphics.setTooltipForNextFrame(this.font, Component.literal(tooltip), mouseX, mouseY);
 			}

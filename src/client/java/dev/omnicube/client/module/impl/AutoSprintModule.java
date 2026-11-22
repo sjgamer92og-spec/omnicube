@@ -1,12 +1,10 @@
 package dev.omnicube.client.module.impl;
 
-import dev.omnicube.client.compat.ClientCompat;
 import dev.omnicube.client.diag.Diagnostics;
 import dev.omnicube.client.module.Module;
 import dev.omnicube.client.module.ModuleCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import org.lwjgl.glfw.GLFW;
 
 public final class AutoSprintModule extends Module {
 	public AutoSprintModule() {
@@ -23,7 +21,9 @@ public final class AutoSprintModule extends Module {
 		if (player.isSprinting() || player.isShiftKeyDown() || player.isUsingItem() || player.isPassenger()) {
 			return;
 		}
-		if (ClientCompat.isKeyDown(GLFW.GLFW_KEY_W)) {
+		// Use the player's forward keybind instead of the physical W key so a remapped
+		// control scheme still sprints.
+		if (client.options.keyUp.isDown()) {
 			try {
 				player.setSprinting(true);
 			} catch (Throwable throwable) {

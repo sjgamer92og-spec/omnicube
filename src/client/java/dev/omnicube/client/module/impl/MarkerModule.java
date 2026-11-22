@@ -51,13 +51,14 @@ public final class MarkerModule extends Module {
 		scanTicks = 0;
 		List<TntMarker> found = new ArrayList<>();
 		double max = maxDistance.get();
+		long now = System.currentTimeMillis();
 		for (var entity : client.level.entitiesForRendering()) {
 			if (!(entity instanceof PrimedTnt tnt)) {
 				continue;
 			}
 			double distance = tnt.distanceToSqr(player.getX(), player.getY(), player.getZ());
 			if (distance <= max * max) {
-				found.add(new TntMarker(tnt.getX(), tnt.getY(), tnt.getZ(), tnt.getFuse(), distance));
+				found.add(new TntMarker(tnt.getX(), tnt.getY(), tnt.getZ(), tnt.getFuse(), distance, now));
 			}
 		}
 		found.sort(Comparator.comparingDouble(TntMarker::distance));
@@ -85,7 +86,10 @@ public final class MarkerModule extends Module {
 					if (position.distanceTo(camera) > maxDistance.get()) {
 						continue;
 					}
-					double seconds = Math.max(0.0D, marker.fuse()) / 20.0D;
+					// The snapshot is up to half a second old, so subtract the elapsed ticks;
+					// otherwise the displayed fuse froze and then jumped backwards.
+					long elapsedTicks = (System.currentTimeMillis() - marker.scannedAt()) / 50L;
+					double seconds = Math.max(0.0D, marker.fuse() - elapsedTicks) / 20.0D;
 					WorldTextRenderer.beam(context, new Vec3(marker.x(), marker.y(), marker.z()), 0xFFFF5533, 2.0D);
 					WorldTextRenderer.draw(context, position,
 							Component.literal(String.format(java.util.Locale.ROOT, "TNT %.1fs", seconds))
@@ -128,6 +132,6 @@ public final class MarkerModule extends Module {
 		}
 	}
 
-	private record TntMarker(double x, double y, double z, int fuse, double distance) {
+	private record TntMarker(double x, double y, double z, int fuse, double distance, long scannedAt) {
 	}
 }

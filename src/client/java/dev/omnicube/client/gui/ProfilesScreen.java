@@ -70,7 +70,11 @@ public final class ProfilesScreen extends Screen {
 			names.clear();
 			names.addAll(ProfileManager.builtInNames());
 			names.addAll(list);
-			if (selected.isEmpty() && !names.isEmpty()) {
+			if (names.isEmpty()) {
+				selected = "";
+			} else if (selected.isEmpty() || !names.contains(selected)) {
+				// The selected profile may have been deleted or renamed; never leave the
+				// screen pointing at a name that no longer exists.
 				selected = names.getFirst();
 			}
 		});

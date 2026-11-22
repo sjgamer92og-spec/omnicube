@@ -452,7 +452,8 @@ public final class HudElements {
 			double distance = Math.sqrt(dx * dx + dz * dz + (waypoint.y - player.getY()) * (waypoint.y - player.getY()));
 			double targetYaw = Math.toDegrees(Math.atan2(-dx, dz));
 			double difference = ((targetYaw - player.getYRot()) % 360.0D + 540.0D) % 360.0D - 180.0D;
-			String direction = difference > 45.0D ? "left" : difference < -45.0D ? "right" : "ahead";
+			// Minecraft yaw grows clockwise, so a positive difference is to the right.
+			String direction = difference > 45.0D ? "right" : difference < -45.0D ? "left" : "ahead";
 			if (Math.abs(difference) > 135.0D) {
 				direction = "behind";
 			}

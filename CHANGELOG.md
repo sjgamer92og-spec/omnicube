@@ -1,5 +1,76 @@
 # Changelog
 
+## 0.2.6 — bug-fix round and a redesigned loading screen (Minecraft 1.21.11)
+
+No new features. This release is a full audit pass over the client code, fixing behaviour that was
+wrong or fragile in 0.2.5.
+
+- **Every feature description was hidden by the config screen.** Hovering any row replaced its
+description with the state reason, which is always `Enabled (default)` for a normal feature. The
+description is shown again; only a blocked, hidden or failed state replaces it.
+- **The config screen's footer buttons overlapped on the Diagnostics tab.** The feature buttons
+(HUD, Macros, Compat, Profiles, Reload) and the diagnostics buttons were drawn in the same place;
+the feature buttons now hide while Diagnostics is open.
+- **The waypoint compass pointed the wrong way.** A positive yaw difference is to the right in
+Minecraft, but the HUD labelled it "left" and vice versa.
+- **Death waypoints piled up.** One `Death` waypoint was added per death, forever. There is now a
+single death marker, moved to the latest death.
+- **Streamer Mode redacted diagnostics while it was off.** The redactor ran regardless of the module
+switch, so coordinates and addresses disappeared from the log even with Streamer Mode disabled.
+Redaction now follows the module.
+- **The chat log could store secrets and duplicate timestamps.** Server messages were written to
+`logs/omnicube-chat.log` unredacted, and displayed chat lines were logged with the chat timestamp on
+top of the log timestamp. Both now log the redacted, undecorated text.
+- **Chat logging stayed dead after one failed write.** A write failure disabled the module and left
+the writer thread gone; re-enabling the module now restarts the writer and clears the failure flag.
+- **Performance recovery forced particles back to `ALL`.** The built-in backend now restores the
+player's original particle setting instead of raising a deliberately reduced one.
+- **The adaptive backend ignored its own switches.** "Reduce render distance under load" and
+"Reduce entity distance under load" were not consulted by the adaptive backend; both are now
+honoured by the scaling step.
+- **The adaptive backend used stale FPS thresholds and a stale preset.** The hardware preset was
+chosen before the GL renderer was known, so a machine that turned out weaker kept the wrong preset
+and the policy kept its old minimum/comfort FPS. The tier is now re-evaluated once the renderer is
+known, the preset is re-applied when the tier drops, and the decision engine is rebuilt.
+- **The fallback backend's video changes were never restored.** After an adaptive failure the fallback
+captured and changed options, but disabling the module only restored the adaptive layer. Both layers
+are restored now, and the fallback can be retried on the next enable.
+- **The Balanced preset raised a reduced particle setting.** Preset level 2 forced `ALL` particles;
+it now leaves the player's value alone, matching the "presets never raise a value" rule.
+- **Visual Toggles leaked its video changes into `options.txt`.** Leaving the world or quitting
+restored Performance but not the particle, view-bob and damage-tilt values, so OmniCube's temporary
+values could be saved as the player's own. They are restored on disconnect and shutdown, and the
+module captures the restored values again on its next tick.
+- **Failed and compatibility-blocked modules never unloaded their state.** `markFailed` and
+`blockForCompatibility` now run the same cleanup as a normal disable; a blocked Fullbright, for
+example, no longer keeps overriding light coordinates.
+- **The entity-culling cache was written from two threads.** Render-thread lookups and client-thread
+`clear()` calls used a plain `HashMap`; it is now a `ConcurrentHashMap` with volatile tick counters.
+- **Auto Sprint ignored a remapped forward key.** It now follows the vanilla forward keybind instead
+of the physical W key.
+- **The TNT fuse counter froze between scans.** Markers are sampled twice a second, and the label
+showed that stale fuse; the elapsed ticks are now subtracted so the countdown stays continuous.
+- **Fullbright could flood the diagnostics log.** A failure in the per-vertex light override logged
+for every vertex of every frame; it now logs once and switches the override off.
+- **Re-using a waypoint or macro name duplicated it.** Adding an existing name now moves or updates
+that entry, so `/omnicube waypoint add`, the quick-waypoint key and the macro screen cannot create
+ambiguous duplicates.
+- **The Default profile left the HUD layout alone.** It now resets element positions as well as
+module settings.
+- **Saving a profile read the live config from the background thread.** The module and HUD sections
+are now deep-copied on the client thread before the IO job is queued, so a tick or screen saving at
+the same time can no longer race the profile snapshot.
+- **The Low-end preset skipped its safe values on a running Visual Toggles module.** The safe
+particle/view-bob/damage-tilt values were only applied while the module was off; they are now applied
+whether it is already enabled or not.
+- **A deleted profile could stay selected** in the Profiles screen; the selection now follows the
+list.
+- **The loading screen is redesigned.** A slowly rotating 3D wireframe cube with a mint glow, a
+drifting grid backdrop, a glowing wordmark, a segmented progress bar with a shine sweep and rotating
+tips replace the flat gradient-and-bar splash. It is still plain rectangle/text drawing with no
+textures, and a new **Animate cube and shimmer** toggle (also applied by the Low-end preset) turns
+the animation off.
+
 ## 0.2.5 — async saves, fullbright polish and eight light features (Minecraft 1.21.11)
 
 - **Config saves no longer touch the render thread.** The JSON snapshot is built in memory and written

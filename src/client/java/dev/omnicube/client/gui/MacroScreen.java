@@ -113,6 +113,12 @@ public final class MacroScreen extends Screen {
 		}
 		module.add(name, command, pendingKey);
 		status = "Added '" + name + "'.";
+		if (nameField != null) {
+			nameField.setValue("");
+		}
+		if (commandField != null) {
+			commandField.setValue("");
+		}
 		refresh();
 	}
 
