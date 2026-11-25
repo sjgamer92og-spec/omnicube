@@ -19,6 +19,7 @@ public final class ChatSearchScreen extends Screen {
 	private List<String> results = new ArrayList<>();
 	private String query = "";
 	private String status = "Type to search chat history.";
+	private int scroll;
 
 	public ChatSearchScreen(Screen parent) {
 		super(Component.literal("Chat Search"));
@@ -33,6 +34,7 @@ public final class ChatSearchScreen extends Screen {
 		search.setValue(query);
 		search.setResponder(value -> {
 			query = value == null ? "" : value;
+			scroll = 0;
 			rebuild();
 		});
 		addRenderableWidget(search);
@@ -70,6 +72,8 @@ public final class ChatSearchScreen extends Screen {
 			}
 		}
 		results = next;
+		int maxRows = Math.max(1, (this.height - 96) / 14);
+		scroll = Math.max(0, Math.min(scroll, Math.max(0, results.size() - maxRows)));
 	}
 
 	@Override
@@ -83,7 +87,10 @@ public final class ChatSearchScreen extends Screen {
 		int width = Math.min(360, this.width - 20);
 		int y = 56;
 		int maxRows = Math.max(1, (this.height - 96) / 14);
-		for (int i = 0; i < Math.min(maxRows, results.size()); i++) {
+		// The list used to stop at the first screen, so older matches could be neither
+		// seen nor copied. Scrolling moves through the whole (capped) result list.
+		int end = Math.min(results.size(), scroll + maxRows);
+		for (int i = scroll; i < end; i++) {
 			String line = results.get(i);
 			boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 13;
 			graphics.fill(x, y, x + width, y + 13, hovered ? 0x44FFFFFF : 0x22101010);
@@ -93,6 +100,11 @@ public final class ChatSearchScreen extends Screen {
 		}
 		if (results.isEmpty()) {
 			graphics.drawString(this.font, "No matching messages.", x, 58, 0xFF888888, false);
+		} else if (results.size() > maxRows) {
+			graphics.drawString(this.font, results.size() + " match(es) — scroll for older", x, this.height - 52,
+					0xFF777777, false);
+		} else {
+			graphics.drawString(this.font, results.size() + " match(es)", x, this.height - 52, 0xFF777777, false);
 		}
 		graphics.drawString(this.font, status, x, this.height - 42, 0xFF888888, false);
 		super.render(graphics, mouseX, mouseY, partialTick);
@@ -110,7 +122,8 @@ public final class ChatSearchScreen extends Screen {
 		int width = Math.min(360, this.width - 20);
 		int y = 56;
 		int maxRows = Math.max(1, (this.height - 96) / 14);
-		for (int i = 0; i < Math.min(maxRows, results.size()); i++) {
+		int end = Math.min(results.size(), scroll + maxRows);
+		for (int i = scroll; i < end; i++) {
 			if (event.x() >= x && event.x() < x + width && event.y() >= y && event.y() < y + 13) {
 				OmniCubeText.copyToClipboard(results.get(i));
 				status = "Copied.";
@@ -119,6 +132,17 @@ public final class ChatSearchScreen extends Screen {
 			y += 14;
 		}
 		return false;
+	}
+
+	@Override
+	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+		if (super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)) {
+			return true;
+		}
+		int maxRows = Math.max(1, (this.height - 96) / 14);
+		int maxScroll = Math.max(0, results.size() - maxRows);
+		scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.round(verticalAmount * 3)));
+		return true;
 	}
 
 	@Override

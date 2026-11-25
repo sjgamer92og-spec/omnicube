@@ -69,7 +69,9 @@ public final class InventoryToolsScreen extends Screen {
 		int buttonWidth = Math.max(12, Math.min(100, (width - 8) / 3 - 4));
 		quickMoveButton = Button.builder(Component.literal("Quick move"), button -> quickMove())
 				.bounds(x, footer, buttonWidth, 20).build();
-		sortButton = Button.builder(Component.literal("Sort: off"), button -> {
+		// Start from the real state: the label used to say "off" after reopening the
+		// screen even though the view was still sorted.
+		sortButton = Button.builder(Component.literal(sortView ? "Sort: on" : "Sort: off"), button -> {
 			sortView = !sortView;
 			button.setMessage(Component.literal(sortView ? "Sort: on" : "Sort: off"));
 			rebuild();
@@ -154,6 +156,10 @@ public final class InventoryToolsScreen extends Screen {
 
 		if (visible.isEmpty()) {
 			graphics.drawString(this.font, "No matching items.", gridX + 4, gridY + 4, 0xFF888888, false);
+		} else {
+			String count = visible.size() + " item(s)";
+			graphics.drawString(this.font, count, gridX + COLUMNS * cell - this.font.width(count), gridY - 11,
+					0xFF888888, false);
 		}
 
 		super.render(graphics, mouseX, mouseY, partialTick);
@@ -229,7 +235,8 @@ public final class InventoryToolsScreen extends Screen {
 					HashedStack.EMPTY
 			));
 			selected = null;
-			updateButtons();
+			// The stacks moved, so the filtered and sorted view has to be rebuilt.
+			rebuild();
 		} catch (Throwable throwable) {
 			Diagnostics.exception("inventory_tools.quick_move", throwable);
 			OmniCubeText.sendError("Quick-move failed; the server rejected the click.");

@@ -34,6 +34,13 @@ public final class MarkerModule extends Module {
 	}
 
 	@Override
+	protected void onDisable() {
+		// Start a fresh scan on the next enable instead of waiting out the old half second.
+		scanTicks = 0;
+		tntSnapshot = List.of();
+	}
+
+	@Override
 	public void tick() {
 		if (!isEnabled()) {
 			tntSnapshot = List.of();

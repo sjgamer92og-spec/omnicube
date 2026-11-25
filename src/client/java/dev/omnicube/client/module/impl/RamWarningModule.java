@@ -20,6 +20,7 @@ public final class RamWarningModule extends Module {
 	private int tickCounter;
 	private long lastWarning;
 	private int lastPercent = -1;
+	private int consecutiveHigh;
 
 	public RamWarningModule() {
 		super("ram_warning", "RAM Warning",
@@ -33,6 +34,7 @@ public final class RamWarningModule extends Module {
 		tickCounter = 0;
 		lastWarning = 0L;
 		lastPercent = -1;
+		consecutiveHigh = 0;
 		publishStatus();
 	}
 
@@ -60,8 +62,12 @@ public final class RamWarningModule extends Module {
 				Diagnostics.note("ram_warning", statusLine());
 			}
 			long now = System.currentTimeMillis();
-			if (percent >= threshold.intValue() && now - lastWarning >= WARNING_COOLDOWN_MILLIS) {
+			// "Stays above" means two samples in a row: one spike (a world load, a
+			// screenshot) used to be enough to warn even though the heap then dropped.
+			consecutiveHigh = percent >= threshold.intValue() ? consecutiveHigh + 1 : 0;
+			if (consecutiveHigh >= 2 && now - lastWarning >= WARNING_COOLDOWN_MILLIS) {
 				lastWarning = now;
+				consecutiveHigh = 0;
 				OmniCubeText.sendError("RAM warning: " + percent + "% of the " + (max / (1024L * 1024L))
 						+ " MB heap is in use. Close other apps or restart Minecraft if it stutters.");
 				Diagnostics.event("ram_warning", "warned at " + percent + "% (" + used / (1024L * 1024L) + " MB used)");

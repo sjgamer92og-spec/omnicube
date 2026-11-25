@@ -63,9 +63,13 @@ public final class StreamerModule extends Module {
 			return text;
 		}
 		String result = text;
-		try {
+					try {
 			result = IPV4.matcher(result).replaceAll("[address hidden]");
-			result = COORDS.matcher(result).replaceAll("[coords hidden]");
+			// The coordinate switch used to be ignored here, so unchecking it still
+			// replaced every coordinate-looking number in chat and the logs.
+			if (hideCoordinates()) {
+				result = COORDS.matcher(result).replaceAll("[coords hidden]");
+			}
 			if (hideServer()) {
 				String server = serverAddress();
 				if (!server.isEmpty()) {

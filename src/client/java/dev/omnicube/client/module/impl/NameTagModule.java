@@ -66,6 +66,11 @@ public final class NameTagModule extends Module {
 				if (!shouldReplace(player)) {
 					continue;
 				}
+				// Vanilla never draws your own tag, and it hides the tag of a crouching
+				// player; the mod used to draw both (your own was visible in third person).
+				if (player == self || player.isDiscrete()) {
+					continue;
+				}
 				double distance = player.position().distanceTo(camera);
 				if (player.isInvisibleTo(self)) {
 					continue;

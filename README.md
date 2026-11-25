@@ -6,7 +6,7 @@
 
 **Repository:** [sjgamer92og-spec/omnicube](https://github.com/sjgamer92og-spec/omnicube)
 
-**Current release:** `0.2.6+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
+**Current release:** `0.2.7+1.21.11` — see [CHANGELOG.md](CHANGELOG.md)
 
 It brings a configurable HUD, useful quality-of-life modules, waypoints, macros, chat tools, better tooltips, free look, a custom crosshair, streamer privacy, auto-reconnect, conservative entity culling and inventory tools together in one clean, toggleable mod. Every feature can be switched off, and every setting is adjustable in-game — no config-file editing required (although `config/omnicube.json` is human-readable if you prefer).
 
@@ -15,6 +15,8 @@ It brings a configurable HUD, useful quality-of-life modules, waypoints, macros,
 **v0.2.1 is a bug-fix round with no new features.** It fixes the reasons features could fail to appear (a single startup failure aborting every later registration, a config list clipped by an unreleased scissor, over-eager compatibility rules and FPS Safety disabling features by default) and adds a diagnostics log, an in-game **Diagnostics** tab and `/omnicube diag`. Details are in the release notes and [CHANGELOG.md](CHANGELOG.md).
 
 **v0.2.2 relicenses OmniCube to the PolyForm Shield License 1.0.0** — still no new features. The mod stays source-available: you may read, use and modify the code, but not ship a product that competes with OmniCube. See [License](#license).
+
+**v0.2.7 fixes and polishes features that already shipped.** Streamer Mode's "Hide coordinates" switch now works, the TNT HUD countdown no longer freezes between scans, Name Tags+ stops drawing your own tag and hides crouching players like vanilla, Chat Search scrolls through every match, Inventory Tools keeps its sort state and refreshes after a quick-move, the keybind-conflict report includes Tool Swap, RAM Warning needs two high samples instead of firing on one spike, Low Durability Warning covers the offhand, and Tool Swap prefers the tool that actually harvests the block instead of anything faster than a fist.
 
 **v0.2.6 is a pure bug-fix round with a new loading screen.** A full audit of the client code fixed the config screen hiding every feature description, overlapping footer buttons on the Diagnostics tab, a reversed waypoint compass, duplicate death waypoints, Streamer Mode redacting diagnostics while off, unredacted server messages and doubled timestamps in the chat log, a chat-log writer that stayed dead after one failure, several Performance and adaptive-quality bugs (particles forced back to ALL, ignored adaptive switches, stale FPS thresholds and presets, unrestored fallback options), Visual Toggles leaking its video changes into `options.txt`, failed or compatibility-blocked modules not running their cleanup, an entity-culling cache touched from two threads, Auto Sprint ignoring a remapped forward key, a frozen TNT fuse label, Fullbright log flooding, duplicate waypoint/macro names and a Default profile that left the HUD layout alone. The Mojang loading screen is replaced by a redesigned animated cube splash.
 
@@ -41,16 +43,16 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Zoom** — hold a key to narrow the field of view with a smooth, adjustable animation; your saved FOV is never changed.
 - **Free Look** — hold a key to look around within a configurable arc (110° by default) without turning your player; it stays in first person and eases back when released.
 - **Custom Splash** — replaces the Mojang studios loading screen with an animated 3D wireframe cube, a mint glow, a drifting grid, a glowing wordmark, a segmented progress bar with a shine sweep and rotating tips. Plain rectangle/text drawing, with an **Animate cube and shimmer** toggle for low-end machines.
-- **Crosshair** — shape, colour, outline and size, drawn through Fabric's HUD registry.
+- **Crosshair** — shape, colour and size, drawn through Fabric's HUD registry.
 
 ### Player
-- **Name Tags+** — client-side player tags with health and distance.
+- **Name Tags+** — client-side player tags with health and distance, matching vanilla's rules for your own tag and crouching players.
 - **Auto Sprint** — sprints while you hold forward, unless sneaking or using an item.
 - **Fly Speed** — sets creative flight speed and restores the previous value.
 - **Coordinates Copy** — copies your exact position and dimension to the clipboard.
 - **Death Coordinates** — announces where you died in chat and keeps the last five death positions for `/omnicube deaths`.
-- **Low Durability Warning** — one chat warning per item when armour or your held item drops below a configurable percentage, re-armed only after repair.
-- **Tool Swap Helper** — a keybind (unbound by default) selects the best hotbar tool for the block under your crosshair; it compares nine slots and never scans the world.
+- **Low Durability Warning** — one chat warning per item when armour, your held item or the offhand drops below a configurable percentage, re-armed only after repair.
+- **Tool Swap Helper** — a keybind (unbound by default) selects the best hotbar tool for the block under your crosshair; it prefers a tool that can actually harvest the block, then the fastest one, compares against the held slot rather than bare hands, and never scans the world.
 - **Visual Toggles** — separate switches for particles (vanilla "Minimal"), rain and snow, view bobbing and the hurt camera tilt; the original video settings are restored when the module is turned off.
 
 ### World
@@ -62,7 +64,7 @@ Every feature is client-side, can be switched off, and needs no server-side mod.
 - **Better Chat** — timestamps and copy-the-last-message.
 - **Chat Spam Collapse** — folds repeated lines into `message (2)`, `message (3)`, …
 - **Chat Log** — writes received chat and server messages to `logs/omnicube-chat.log` through a bounded background queue.
-- **Chat Search** — searchable in-game history screen.
+- **Chat Search** — searchable in-game history screen; the whole result list scrolls, and the match count is shown.
 - **Chat Filters** — hide or highlight lines by keyword or regex. Patterns are precompiled, capped at 50, and an invalid regex is rejected and logged when you add it, never while a message arrives. Add them with `/omnicube filter add <text>` or `/omnicube filter addregex <pattern>`.
 
 ### Items and inventory
@@ -122,7 +124,7 @@ Open the **HUD Editor** (`H` by default, or `/omnicube hud`) to drag elements an
 
 | Category | Feature | What it does |
 | --- | --- | --- |
-| Render | Fullbright | Raises gamma with a configurable brightness and restores your exact original value when disabled or on quit |
+| Render | Fullbright | Overrides the lightmap so caves and night are lit, with Full / Gamma / Night vision modes and a brightness slider; the saved gamma option is never written |
 | Render | Zoom | Hold a key to narrow FOV, with an adjustable zoom factor |
 | Render | Free Look | Hold **Right Alt** to look around without turning your player; camera rotation is restored when released |
 | Render | Crosshair | Shape (Cross/Dot/Square/Circle), color and size; uses Fabric's HUD registry, not renderer internals |
@@ -407,12 +409,13 @@ Kept up to date with every release; the same plan lives in [ROADMAP.md](ROADMAP.
 | 0.2.0 | Free look, name tags, chat tools, streamer mode, crosshair, auto-reconnect, entity culling, compatibility registry, low-end preset, FPS Safety |
 | 0.2.1 | Bug-fix round: startup isolation, list clipping, compatibility rules, FPS Safety defaults; diagnostics log, in-game Diagnostics tab, `/omnicube diag`, startup self-check |
 | 0.2.2 | PolyForm Shield licence; hardware-tier presets and adaptive scaling in the Performance module |
-| 0.2.4 | Real lightmap-based Fullbright with Full / Gamma / Night vision modes and a brightness slider; hook status in diagnostics with a logged gamma fallback; HUD and splash bug fixes |
 | 0.2.3 | Bounded first-person free look with smooth return; frame-animated zoom; custom OmniCube loading screen; full-brightness fix; armour material names and durability colours; auto-hiding empty HUD panels; TNT fuse crash fix |
+| 0.2.4 | Real lightmap-based Fullbright with Full / Gamma / Night vision modes and a brightness slider; hook status in diagnostics with a logged gamma fallback; HUD and splash bug fixes |
 | 0.2.5 | Asynchronous debounced config saves and Fullbright polish (Keep shading, Sodium/Iris detection); chat filters, RAM warning, visual toggles, settings profiles, death coordinates, low durability warning, item counter HUD and tool swap helper |
 | 0.2.6 | Bug-fix audit: config-screen tooltips and footer overlap, waypoint direction, duplicate waypoints, Streamer Mode redaction, chat-log timestamps and redaction, performance particle and adaptive bugs, option leaks, cleanup on failure/blocking, thread-safe entity culling, Auto Sprint keybind, TNT fuse interpolation, Fullbright log flooding; redesigned animated loading screen |
+| 0.2.7 | Feature polish: Streamer coordinate switch, TNT HUD interpolation, vanilla-accurate name tags, scrollable chat search, inventory sort state and refresh, Tool Swap keybind conflicts and correct-tool preference, offhand durability warnings, two-sample RAM warning |
 
-### Next — 0.2.7
+### Next — 0.2.8
 
 Still queued from the 0.2.4 plan and deferred by choice: a resource-pack quick toggle and a better server list, plus a hand-swing visual toggle (no safe client-side hook was found in 1.21.11 without breaking the first-person hand render).
 

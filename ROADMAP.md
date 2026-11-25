@@ -1,5 +1,12 @@
 # OmniCube roadmap
 
+## Released — v0.2.7 (Minecraft 1.21.11)
+
+- Fixes and polish for existing features, no new modules: Streamer Mode coordinate switch, TNT HUD
+  interpolation, vanilla-accurate name tags, scrollable Chat Search with match counts, Inventory
+  Tools sort state and refresh, Tool Swap keybind conflict reporting and correct-tool preference,
+  offhand Low Durability warnings, and a two-sample RAM Warning
+
 ## Released — v0.2.6 (Minecraft 1.21.11)
 
 - Full bug-audit pass with no new features: config-screen tooltips and overlapping footers, waypoint
@@ -84,7 +91,7 @@
 - Compatibility registry, auto-disable, Compatibility screen and `/omnicube compat`
 - Low-end preset, FPS Safety and opt-in `/omnicube perf` profiler
 
-## Next — v0.2.7 candidates
+## Next — v0.2.8 candidates
 
 Still queued from the 0.2.4 plan: a resource-pack quick toggle and a better server list, plus a
 hand-swing visual toggle once a safe client-side hook exists in 1.21.11 (cancelling the first-person

@@ -365,6 +365,7 @@ public final class HudElements {
 		private long lastScan;
 		/** Snapshot values only: holding an entity reference across frames is not safe. */
 		private int fuse = -1;
+		private long scannedAt;
 		private double distance = -1.0D;
 
 		@Override
@@ -382,7 +383,11 @@ public final class HudElements {
 				if (fuse < 0) {
 					return List.of("TNT  none nearby");
 				}
-				return List.of(String.format(Locale.ROOT, "TNT  %.1fs", fuse / 20.0D),
+				// The snapshot is up to a quarter second old; subtract the elapsed ticks
+				// so the countdown ticks down continuously instead of freezing and jumping.
+				long elapsedTicks = Math.max(0L, (now - scannedAt) / 50L);
+				long remaining = Math.max(0L, fuse - elapsedTicks);
+				return List.of(String.format(Locale.ROOT, "TNT  %.1fs", remaining / 20.0D),
 						String.format(Locale.ROOT, "%.0f blocks away", Math.sqrt(distance)));
 			} catch (Throwable throwable) {
 				// Lighting TNT must never be able to take the frame down with it.
@@ -396,6 +401,7 @@ public final class HudElements {
 		private void scan(Minecraft client, LocalPlayer player) {
 			fuse = -1;
 			distance = -1.0D;
+			scannedAt = System.currentTimeMillis();
 			double nearest = Double.MAX_VALUE;
 			List<Entity> entities = new ArrayList<>();
 			try {

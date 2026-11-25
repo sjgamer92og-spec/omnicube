@@ -51,23 +51,39 @@ public final class ToolSwapModule extends Module {
 			BlockState state = client.level.getBlockState(blockHit.getBlockPos());
 			LocalPlayer player = client.player;
 			int current = player.getInventory().getSelectedSlot();
+			ItemStack currentStack = player.getInventory().getItem(current);
+			// Compare against the held item, not bare hands, and prefer a tool that can
+			// actually harvest the block: a fast-but-wrong item used to win over the
+			// pickaxe that drops the block, and anything faster than the held item was
+			// ignored when it was slower than fist speed.
+			boolean currentCorrect = !currentStack.isEmpty() && currentStack.isCorrectToolForDrops(state);
+			float currentSpeed = currentStack.isEmpty() ? 1.0F : currentStack.getDestroySpeed(state);
 			int best = -1;
-			float bestSpeed = 1.0F;
+			boolean bestCorrect = currentCorrect;
+			float bestSpeed = currentSpeed;
 			String bestName = "";
 			for (int slot = 0; slot < 9; slot++) {
+				if (slot == current) {
+					continue;
+				}
 				ItemStack stack = player.getInventory().getItem(slot);
 				if (stack.isEmpty()) {
 					continue;
 				}
+				boolean correct = stack.isCorrectToolForDrops(state);
 				float speed = stack.getDestroySpeed(state);
-				if (speed > bestSpeed) {
+				boolean better = correct && !bestCorrect
+						|| correct == bestCorrect && speed > bestSpeed + 0.001F;
+				if (better) {
+					bestCorrect = correct;
 					bestSpeed = speed;
 					best = slot;
 					bestName = stack.getHoverName().getString();
 				}
 			}
-			if (best < 0 || best == current) {
-				message(best < 0 ? "No better tool in your hotbar." : "Already holding the best tool.");
+			if (best < 0) {
+				message(currentCorrect || currentSpeed > 1.0F
+						? "Already holding the best tool." : "No better tool in your hotbar.");
 				return false;
 			}
 			player.getInventory().setSelectedSlot(best);

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.2.7 — fixes and polish for existing features (Minecraft 1.21.11)
+
+No new modules or screens. This round fixes defects in features that already shipped and makes a few
+of them behave better.
+
+- **Streamer Mode ignored its "Hide coordinates" switch.** Coordinate-looking numbers were replaced
+  in chat, chat search and the logs even with the switch unchecked. Redaction now follows the setting.
+- **The TNT HUD counter froze between scans.** The element samples twice a second and displayed the
+  sampled fuse until the next scan, so it stood still and then jumped. Elapsed ticks are now
+  subtracted, as already done for the world marker.
+- **Name Tags+ drew your own tag and ignored crouching.** Your tag appeared above your head in third
+  person, and crouching players were labelled even though vanilla hides their name tag. Both now
+  match vanilla.
+- **Chat Search could only show the first screen of matches.** Older results could not be reached or
+  copied; the list scrolls now, reports how many lines matched, and says when more are below.
+- **Inventory Tools forgot its own sort state.** Reopening the screen showed "Sort: off" while the
+  view was still sorted, the view was not rebuilt after a quick-move, and there was no feedback on
+  how many items matched. All three are fixed.
+- **Keybind conflicts did not include Tool Swap.** A clash on that keybind was never reported by the
+  config screen or diagnostics.
+- **RAM Warning fired on a single spike.** The description promises a warning when usage "stays
+  above" the threshold; it now needs two consecutive samples, so a world load or a screenshot no
+  longer produces a warning that is immediately false.
+- **Low Durability Warning ignored the offhand.** With "Include the held item" on, a nearly broken
+  shield or tool in the offhand now warns too.
+- **Tool Swap compared against bare hands and could pick the wrong tool.** Any item faster than a
+  fist beat the held item, and a fast item that cannot harvest the block could win over the pickaxe
+  that actually drops it. It now compares with the held slot and prefers a tool that is correct for
+  the block, then the fastest one.
+- **World Markers delayed its first scan after being enabled** by up to half a second; the scan
+  counter is reset with the module.
+
 ## 0.2.6 — bug-fix round and a redesigned loading screen (Minecraft 1.21.11)
 
 No new features. This release is a full audit pass over the client code, fixing behaviour that was

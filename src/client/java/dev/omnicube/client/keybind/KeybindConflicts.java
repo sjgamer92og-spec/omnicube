@@ -28,6 +28,7 @@ public final class KeybindConflicts {
 			add(ours, OmniCubeKeybinds.copyChat);
 			add(ours, OmniCubeKeybinds.inventoryTools);
 			add(ours, OmniCubeKeybinds.chatSearch);
+			add(ours, OmniCubeKeybinds.swapTool);
 
 			for (int i = 0; i < ours.size(); i++) {
 				KeyMapping mine = ours.get(i);

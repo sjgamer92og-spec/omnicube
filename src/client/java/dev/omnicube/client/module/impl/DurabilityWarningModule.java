@@ -63,11 +63,11 @@ public final class DurabilityWarningModule extends Module {
 			int percentLimit = threshold.intValue();
 			Set<String> stillLow = new HashSet<>();
 			for (EquipmentSlot slot : EquipmentSlot.values()) {
-				if (slot == EquipmentSlot.MAINHAND && !includeHeld.get()) {
+				if ((slot == EquipmentSlot.MAINHAND || slot == EquipmentSlot.OFFHAND) && !includeHeld.get()) {
 					continue;
 				}
-				if (slot != EquipmentSlot.MAINHAND && slot != EquipmentSlot.HEAD && slot != EquipmentSlot.CHEST
-						&& slot != EquipmentSlot.LEGS && slot != EquipmentSlot.FEET) {
+				if (slot != EquipmentSlot.MAINHAND && slot != EquipmentSlot.OFFHAND && slot != EquipmentSlot.HEAD
+						&& slot != EquipmentSlot.CHEST && slot != EquipmentSlot.LEGS && slot != EquipmentSlot.FEET) {
 					continue;
 				}
 				check(player, player.getItemBySlot(slot), slot.name(), percentLimit, stillLow);
